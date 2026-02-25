@@ -301,18 +301,7 @@ const BiddingDetail = () => {
                 </LineChart>
               </ResponsiveContainer>
             </div>
-            <div className="flex items-center justify-between mt-2 px-1">
-              <div className="flex items-center gap-2">
-                <button onClick={() => handleBidFromChart(Math.max(canal.currentBidRange.min / 1000, bidAmount / 1000 - 1))} className="px-2 py-1 rounded-md bg-success/10 border border-success/30 text-success text-[10px] font-bold hover:bg-success/20 transition-colors">
-                  🟢 BUY (Lower)
-                </button>
-                <span className="text-xs font-bold text-foreground font-mono">${(bidAmount / 1000).toFixed(1)}k</span>
-                <button onClick={() => handleBidFromChart(Math.min(canal.currentBidRange.max / 1000, bidAmount / 1000 + 1))} className="px-2 py-1 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-[10px] font-bold hover:bg-destructive/20 transition-colors">
-                  🔴 SELL (Higher)
-                </button>
-              </div>
-              <p className="text-[9px] text-muted-foreground">Click dots on predicted line to set bid value</p>
-            </div>
+            <p className="text-[9px] text-muted-foreground mt-2 text-right px-1">Click dots on predicted line to set bid value</p>
           </div>
 
           {/* Bid Success Probability */}
@@ -518,62 +507,60 @@ const BiddingDetail = () => {
         </div>
 
         {/* MIDDLE - Place Bid (fixed, non-scrollable) */}
-        <div className="hidden lg:flex w-[280px] border-l border-border flex-col h-full overflow-hidden shrink-0 bg-card">
-          <div className="p-4 flex-1 flex flex-col">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-bold text-foreground">Place Live Bid</h2>
-              <div className="flex items-center gap-1 text-[9px] text-destructive font-bold">
-                <Timer className="w-3 h-3" />
-                {fmtDeadline(deadline)}
-              </div>
-            </div>
+        <div className="hidden lg:flex w-[300px] border-l border-border flex-col h-full overflow-hidden shrink-0 bg-card">
+          <div className="p-5 flex-1 flex flex-col">
+            <h2 className="text-lg font-bold text-foreground text-center mb-4">Place Live Bid</h2>
 
             {bidPlaced ? (
-              <div className="space-y-3">
-                <div className="bg-primary/5 border-2 border-primary/20 rounded-xl p-4 text-center">
+              <div className="space-y-4 flex-1 flex flex-col">
+                <div className="bg-primary/5 border-2 border-primary/20 rounded-xl p-5 text-center">
                   <p className="text-[10px] text-primary font-bold uppercase tracking-wider mb-1">Bid Submitted</p>
                   <p className="text-3xl font-bold text-foreground">${placedAmount.toLocaleString()}</p>
-                  <p className="text-[10px] text-muted-foreground mt-1">⏳ Waiting for auction result...</p>
-                  <p className="text-[9px] text-muted-foreground">Queue Position: #7 of 24</p>
+                  <p className="text-[11px] text-muted-foreground mt-2">⏳ Waiting for auction result...</p>
+                  <p className="text-[9px] text-muted-foreground mt-1">Queue Position: #7 of 24</p>
                 </div>
                 <button onClick={handleModifyBid} className="w-full py-2.5 border-2 border-warning/30 text-warning font-semibold rounded-lg hover:bg-warning/5 transition-colors text-xs">
                   Modify Bid & Resubmit
                 </button>
+                <div className="mt-auto" />
               </div>
             ) : (
-              <div className="space-y-4">
-                {/* Urgency gauge */}
-                <div className="flex items-center gap-3">
-                  <div className="relative w-16 h-8 overflow-hidden shrink-0">
-                    <svg viewBox="0 0 100 50" className="w-full h-full">
-                      <path d="M10,50 A40,40 0 0,1 90,50" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" strokeLinecap="round" />
-                      <path d="M10,50 A40,40 0 0,1 90,50" fill="none" stroke={urgencyPercent > 70 ? 'hsl(var(--destructive))' : urgencyPercent > 40 ? 'hsl(38, 92%, 50%)' : 'hsl(var(--success))'} strokeWidth="8" strokeLinecap="round" strokeDasharray={`${urgencyPercent * 1.26} 126`} />
+              <div className="flex-1 flex flex-col">
+                {/* Urgency Gauge - centered */}
+                <div className="flex flex-col items-center mb-4">
+                  <div className="relative w-28 h-14">
+                    <svg viewBox="0 0 120 60" className="w-full h-full">
+                      <path d="M10,55 A50,50 0 0,1 110,55" fill="none" stroke="hsl(var(--muted))" strokeWidth="10" strokeLinecap="round" />
+                      <path d="M10,55 A50,50 0 0,1 110,55" fill="none" stroke={urgencyPercent > 70 ? 'hsl(var(--destructive))' : urgencyPercent > 40 ? 'hsl(38, 92%, 50%)' : 'hsl(var(--success))'} strokeWidth="10" strokeLinecap="round" strokeDasharray={`${urgencyPercent * 1.57} 157`} />
                     </svg>
                   </div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground tracking-tight">${bidAmount.toLocaleString()}</p>
-                    <p className={`text-[9px] font-bold uppercase ${feedback.color}`}>{feedback.text} — {feedback.percent}% win</p>
+                  <p className={`text-[10px] font-bold uppercase mt-1 ${urgencyPercent > 70 ? 'text-destructive' : urgencyPercent > 40 ? 'text-warning' : 'text-success'}`}>
+                    {urgencyPercent > 70 ? 'HIGH' : urgencyPercent > 40 ? 'MEDIUM' : 'LOW'} URGENCY
+                  </p>
+                </div>
+
+                {/* Bid Amount */}
+                <div className="text-center mb-1">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Bid Amount</p>
+                  <p className="text-4xl font-extrabold text-foreground tracking-tight">${bidAmount.toLocaleString()}</p>
+                </div>
+
+                {/* AI suggested label */}
+                <div className="flex justify-center mb-3">
+                  <div className="flex flex-col items-center">
+                    <span className="text-[10px] text-success font-semibold">AI: ${(AI_SUGGESTED_BID / 1000).toFixed(1)}k</span>
+                    <span className="text-success text-sm leading-none">▼</span>
                   </div>
                 </div>
 
-                {/* Gradient slider - BIGGER */}
-                <div className="relative">
-                  {/* AI marker */}
-                  <div className="relative h-6 mb-1">
-                    <div className="absolute -translate-x-1/2 flex flex-col items-center z-10" style={{ left: `${aiSuggestedPercent}%` }}>
-                      <div className="bg-primary text-primary-foreground text-[8px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap shadow-lg border border-primary-foreground/20">
-                        ✨ AI: ${(AI_SUGGESTED_BID / 1000).toFixed(1)}k
-                      </div>
-                      <div className="w-0 h-0 border-l-[5px] border-r-[5px] border-t-[5px] border-l-transparent border-r-transparent border-t-primary" />
-                    </div>
+                {/* Gradient slider */}
+                <div className="relative mb-2 px-1">
+                  {/* AI marker on bar */}
+                  <div className="absolute -top-1 z-10" style={{ left: `${aiSuggestedPercent}%`, transform: 'translateX(-50%)' }}>
+                    <div className="w-0.5 h-8 bg-success rounded-full shadow-[0_0_6px_hsl(152,69%,41%,0.6)]" />
                   </div>
                   {/* Gradient track */}
-                  <div className="relative h-4 rounded-full overflow-hidden shadow-inner" style={{ background: 'linear-gradient(to right, hsl(152, 69%, 41%), hsl(80, 60%, 50%), hsl(60, 70%, 50%), hsl(38, 92%, 50%), hsl(15, 80%, 50%), hsl(0, 72%, 51%))' }}>
-                    {/* AI marker line on bar */}
-                    <div className="absolute top-0 bottom-0 w-1 bg-primary z-10 shadow-lg" style={{ left: `${aiSuggestedPercent}%`, transform: 'translateX(-50%)' }}>
-                      <div className="absolute -top-1 -bottom-1 -left-1 w-3 border-2 border-primary rounded-sm animate-pulse" />
-                    </div>
-                  </div>
+                  <div className="relative h-3.5 rounded-full overflow-hidden shadow-inner" style={{ background: 'linear-gradient(to right, hsl(152, 69%, 41%), hsl(80, 60%, 50%), hsl(60, 70%, 50%), hsl(38, 92%, 50%), hsl(15, 80%, 50%), hsl(0, 72%, 51%))' }} />
                   <input
                     type="range"
                     min={canal.currentBidRange.min}
@@ -581,24 +568,48 @@ const BiddingDetail = () => {
                     step={500}
                     value={bidAmount}
                     onChange={e => setBidAmount(Number(e.target.value))}
-                    className="absolute inset-0 w-full h-4 opacity-0 cursor-pointer z-20"
-                    style={{ top: '28px' }}
+                    className="absolute inset-x-0 w-full h-3.5 opacity-0 cursor-pointer z-20"
+                    style={{ top: '0px' }}
                   />
-                  {/* Thumb */}
-                  <div className="absolute h-6 w-6 rounded-full bg-foreground border-3 border-background shadow-xl z-10 -translate-x-1/2 pointer-events-none" style={{ left: `${((bidAmount - canal.currentBidRange.min) / (canal.currentBidRange.max - canal.currentBidRange.min)) * 100}%`, top: '25px' }} />
-                  <div className="flex justify-between mt-3">
+                  {/* Thumb indicator */}
+                  <div className="absolute h-5 w-5 rounded-full bg-primary border-2 border-background shadow-lg z-10 -translate-x-1/2 pointer-events-none" style={{ left: `${((bidAmount - canal.currentBidRange.min) / (canal.currentBidRange.max - canal.currentBidRange.min)) * 100}%`, top: '-3px' }} />
+                  <div className="flex justify-between mt-2">
                     <span className="text-[10px] text-success font-bold">${(canal.currentBidRange.min / 1000).toFixed(0)}k</span>
                     <span className="text-[10px] text-destructive font-bold">${(canal.currentBidRange.max / 1000).toFixed(0)}k</span>
                   </div>
                 </div>
 
-                {/* Submit + Ask AI */}
-                <button onClick={handleSubmitBid} className="w-full py-3 bg-primary text-primary-foreground font-bold rounded-lg hover:opacity-90 transition-opacity text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm">
-                  Submit Bid <Send className="w-3.5 h-3.5" />
+                {/* Winning Trend */}
+                <div className="flex items-center justify-between px-3 py-2.5 border border-border rounded-lg mb-2">
+                  <span className="text-xs text-muted-foreground font-medium">WINNING TREND</span>
+                  <span className="text-xs font-bold text-foreground flex items-center gap-1">Upward <TrendingUp className="w-3.5 h-3.5 text-destructive" /></span>
+                </div>
+
+                {/* Optimal Range */}
+                <div className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg mb-4 ${feedback.text === 'Optimal Range' ? 'bg-success/10 border border-success/20' : feedback.text === 'Low Chance' ? 'bg-destructive/10 border border-destructive/20' : 'bg-warning/10 border border-warning/20'}`}>
+                  <div className={`w-5 h-5 rounded flex items-center justify-center ${feedback.text === 'Optimal Range' ? 'bg-success text-background' : feedback.text === 'Low Chance' ? 'bg-destructive text-background' : 'bg-warning text-background'}`}>
+                    <span className="text-xs font-bold">✓</span>
+                  </div>
+                  <div>
+                    <p className={`text-xs font-bold ${feedback.color}`}>{feedback.text}</p>
+                    <p className="text-[10px] text-muted-foreground">{feedback.percent}% chance of winning.</p>
+                  </div>
+                </div>
+
+                {/* Spacer to push buttons to bottom */}
+                <div className="flex-1" />
+
+                {/* Submit Bid */}
+                <button onClick={handleSubmitBid} className="w-full py-3.5 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-md mb-2">
+                  Submit Bid <Send className="w-4 h-4" />
                 </button>
-                <button onClick={handleAskAI} className="w-full py-2 border-2 border-primary/30 text-primary font-semibold rounded-lg hover:bg-primary/5 transition-colors text-xs flex items-center justify-center gap-2">
-                  <Bot className="w-3.5 h-3.5" /> Ask AI About ${(bidAmount/1000).toFixed(1)}k
+
+                {/* Ask AI */}
+                <button onClick={handleAskAI} className="w-full py-2.5 border-2 border-primary/20 text-primary font-semibold rounded-xl hover:bg-primary/5 transition-colors text-xs flex items-center justify-center gap-2">
+                  <Bot className="w-3.5 h-3.5" /> Ask AI About This Bid
                 </button>
+
+                <p className="text-[9px] text-muted-foreground text-center mt-2">Reviewed by <span className="text-primary font-medium">AI</span> before final placement</p>
               </div>
             )}
           </div>
