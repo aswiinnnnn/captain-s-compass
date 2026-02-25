@@ -2,10 +2,9 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { canalsPorts, previousBids, bidFactors, probabilityData } from '@/data/mockData';
 import AIChatbot from '@/components/AIChatbot';
-import { ArrowLeft, Download, Zap, ChevronRight } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { Download, Zap, ChevronRight, Send, ArrowUp, ArrowDown, Minus, TrendingUp, Shield, AlertTriangle, Clock, Users } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, ReferenceLine } from 'recharts';
 
-// Mock bidding trends data
 const biddingTrends = [
   { month: 'JAN', high: 48, low: 32 },
   { month: 'FEB', high: 42, low: 35 },
@@ -38,13 +37,12 @@ const BiddingDetail = () => {
   }
 
   const getBidFeedback = () => {
-    if (bidAmount < 40000) return { text: 'Low chance', color: 'text-destructive' };
-    if (bidAmount <= 50000) return { text: 'Optimal Range', color: 'text-success' };
-    return { text: 'High cost', color: 'text-warning' };
+    if (bidAmount < 40000) return { text: 'Low Chance', color: 'text-destructive', percent: Math.round((bidAmount / 60000) * 65) };
+    if (bidAmount <= 50000) return { text: 'Optimal Range', color: 'text-success', percent: Math.round(68 + ((bidAmount - 40000) / 10000) * 24) };
+    return { text: 'High Cost', color: 'text-warning', percent: Math.min(99, Math.round(92 + ((bidAmount - 50000) / 10000) * 7)) };
   };
 
   const feedback = getBidFeedback();
-
   const urgencyPercent = Math.min(100, Math.round((bidAmount / 60000) * 100));
 
   return (
@@ -52,9 +50,9 @@ const BiddingDetail = () => {
       {/* Header */}
       <header className="border-b border-border px-6 py-4 bg-card shrink-0">
         <div className="flex items-center gap-2 text-xs text-primary mb-2">
-          <button onClick={() => navigate('/dashboard')} className="hover:underline">Canal Bids</button>
+          <button onClick={() => navigate('/dashboard')} className="hover:underline font-medium">Canal Bids</button>
           <ChevronRight className="w-3 h-3 text-muted-foreground" />
-          <span>{canal.name} - Transit SC-4402</span>
+          <span className="text-muted-foreground">{canal.name} - Transit SC-4402</span>
         </div>
         <div className="flex items-center justify-between">
           <div>
@@ -87,16 +85,13 @@ const BiddingDetail = () => {
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-success" /> Low Bids</span>
               </div>
             </div>
-            <div className="h-[200px]">
+            <div className="h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={biddingTrends}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 13%, 90%)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 13%, 91%)" />
                   <XAxis dataKey="month" stroke="hsl(220, 10%, 55%)" fontSize={11} />
                   <YAxis stroke="hsl(220, 10%, 55%)" fontSize={11} tickFormatter={v => `$${v}k`} />
-                  <Tooltip
-                    contentStyle={{ background: 'white', border: '1px solid hsl(220, 13%, 90%)', borderRadius: '8px', fontSize: '12px' }}
-                    formatter={(v: number) => [`$${v}k`]}
-                  />
+                  <Tooltip contentStyle={{ background: 'white', border: '1px solid hsl(220, 13%, 90%)', borderRadius: '8px', fontSize: '12px' }} formatter={(v: number) => [`$${v}k`]} />
                   <Line type="monotone" dataKey="high" stroke="hsl(0, 72%, 51%)" strokeWidth={2} dot={false} />
                   <Line type="monotone" dataKey="low" stroke="hsl(152, 69%, 41%)" strokeWidth={2} dot={false} />
                 </LineChart>
@@ -109,18 +104,67 @@ const BiddingDetail = () => {
             <h3 className="text-sm font-bold text-foreground uppercase tracking-wider mb-3">Harbor Logistics & Metrics</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               {[
-                { label: 'QUEUE LENGTH', value: '24', sub: 'vessels', accent: 'primary' },
-                { label: 'AVG WAITING', value: '18h', sub: '+2h vs. normal', accent: 'warning' },
-                { label: 'WATER LEVEL', value: '+0.5m', sub: 'Optimal Draft', accent: 'success' },
-                { label: 'DEMURRAGE', value: '$850', sub: 'Standard Rate', accent: 'muted' },
-                { label: 'BID CEILING', value: '$62k', sub: 'Hard Limit', accent: 'destructive' },
+                { label: 'QUEUE LENGTH', value: String(canal.queueLength), sub: 'vessels', icon: Users, accent: 'text-primary' },
+                { label: 'AVG WAITING', value: '18h', sub: '+2h vs. normal', icon: Clock, accent: 'text-warning' },
+                { label: 'WATER LEVEL', value: '+0.5m', sub: 'Optimal Draft', icon: TrendingUp, accent: 'text-success' },
+                { label: 'DEMURRAGE', value: '$850', sub: '/hr Standard', icon: AlertTriangle, accent: 'text-muted-foreground' },
+                { label: 'BID CEILING', value: `$${(canal.currentBidRange.max / 1000).toFixed(0)}k`, sub: 'Hard Limit', icon: Shield, accent: 'text-destructive' },
               ].map(m => (
                 <div key={m.label} className="glass-panel rounded-xl p-3">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{m.label}</p>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{m.label}</p>
+                    <m.icon className={`w-3.5 h-3.5 ${m.accent}`} />
+                  </div>
                   <p className="text-2xl font-bold text-foreground">{m.value}</p>
-                  <p className={`text-[10px] ${m.accent === 'destructive' ? 'text-destructive' : m.accent === 'warning' ? 'text-warning' : m.accent === 'success' ? 'text-success' : 'text-muted-foreground'}`}>{m.sub}</p>
+                  <p className={`text-[10px] ${m.accent}`}>{m.sub}</p>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Bid Impact Factors */}
+          <div className="glass-panel rounded-xl p-5">
+            <h2 className="text-base font-bold text-foreground mb-3">AI Bid Impact Factors</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {bidFactors.map(factor => (
+                <div key={factor.name} className="flex items-start gap-3 p-3 bg-muted rounded-lg">
+                  <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 mt-0.5 ${factor.impact === 'up' ? 'bg-destructive/10' : factor.impact === 'down' ? 'bg-success/10' : 'bg-muted'}`}>
+                    {factor.impact === 'up' ? <ArrowUp className="w-3.5 h-3.5 text-destructive" /> : factor.impact === 'down' ? <ArrowDown className="w-3.5 h-3.5 text-success" /> : <Minus className="w-3.5 h-3.5 text-muted-foreground" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-foreground">{factor.name}</p>
+                      <span className="text-[10px] text-muted-foreground">{Math.round(factor.weight * 100)}% weight</span>
+                    </div>
+                    <p className="text-xs text-primary font-mono mt-0.5">{factor.value}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{factor.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Probability Chart */}
+          <div className="glass-panel rounded-xl p-5">
+            <h2 className="text-base font-bold text-foreground mb-3">Bid Success Probability</h2>
+            <div className="h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={probabilityData}>
+                  <defs>
+                    <linearGradient id="probGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(224, 76%, 48%)" stopOpacity={0.2} />
+                      <stop offset="100%" stopColor="hsl(224, 76%, 48%)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 13%, 91%)" />
+                  <XAxis dataKey="bid" tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} stroke="hsl(220, 10%, 55%)" fontSize={11} />
+                  <YAxis tickFormatter={v => `${v}%`} stroke="hsl(220, 10%, 55%)" fontSize={11} />
+                  <Tooltip contentStyle={{ background: 'white', border: '1px solid hsl(220, 13%, 90%)', borderRadius: '8px', fontSize: '12px' }} labelFormatter={v => `Bid: $${Number(v).toLocaleString()}`} formatter={(v: number) => [`${v}%`, 'Win Rate']} />
+                  <ReferenceLine x={bidAmount} stroke="hsl(224, 76%, 48%)" strokeWidth={2} strokeDasharray="4 4" label={{ value: `Your Bid`, position: 'top', fill: 'hsl(224, 76%, 48%)', fontSize: 10 }} />
+                  <ReferenceLine x={44800} stroke="hsl(152, 69%, 41%)" strokeDasharray="4 4" label={{ value: 'AI Suggested', position: 'top', fill: 'hsl(152, 69%, 41%)', fontSize: 10 }} />
+                  <Area type="monotone" dataKey="probability" stroke="hsl(224, 76%, 48%)" fill="url(#probGrad)" strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
@@ -140,17 +184,15 @@ const BiddingDetail = () => {
                 </tr>
               </thead>
               <tbody>
-                {[
-                  { time: 'Oct 22, 14:30', amount: '$41,500', priority: 'Standard', status: 'OUTBID', statusColor: 'text-destructive bg-destructive/10' },
-                  { time: 'Oct 21, 09:15', amount: '$44,200', priority: 'High', status: 'WON', statusColor: 'text-success bg-success/10' },
-                  { time: 'Oct 19, 18:45', amount: '$39,800', priority: 'Eco', status: 'EXPIRED', statusColor: 'text-muted-foreground bg-muted' },
-                ].map((bid, i) => (
-                  <tr key={i} className="border-b border-border/50">
+                {previousBids.map((bid, i) => (
+                  <tr key={i} className="border-b border-border/50 hover:bg-muted/50 transition-colors">
                     <td className="py-3 text-xs text-foreground">{bid.time}</td>
-                    <td className="py-3 text-sm font-bold text-foreground">{bid.amount}</td>
+                    <td className="py-3 text-sm font-bold text-foreground">${bid.amount.toLocaleString()}</td>
                     <td className="py-3 text-xs text-muted-foreground">{bid.priority}</td>
                     <td className="py-3 text-right">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${bid.statusColor}`}>{bid.status}</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${bid.result === 'Won' ? 'text-success bg-success/10' : bid.result === 'Lost' ? 'text-destructive bg-destructive/10' : 'text-muted-foreground bg-muted'}`}>
+                        {bid.result === 'Lost' ? 'OUTBID' : bid.result.toUpperCase()}
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -160,14 +202,14 @@ const BiddingDetail = () => {
         </div>
 
         {/* Right panel */}
-        <div className="hidden lg:flex w-[35%] max-w-[380px] border-l border-border flex-col">
+        <div className="hidden lg:flex w-[35%] max-w-[400px] border-l border-border flex-col">
           {/* Place Live Bid */}
-          <div className="p-5 border-b border-border">
+          <div className="p-5 border-b border-border bg-card">
             <h2 className="text-lg font-bold text-foreground text-center mb-4">Place Live Bid</h2>
 
             {/* Urgency gauge */}
             <div className="flex flex-col items-center mb-4">
-              <div className="relative w-24 h-12 overflow-hidden">
+              <div className="relative w-28 h-14 overflow-hidden">
                 <svg viewBox="0 0 100 50" className="w-full h-full">
                   <path d="M10,50 A40,40 0 0,1 90,50" fill="none" stroke="hsl(220, 13%, 90%)" strokeWidth="8" strokeLinecap="round" />
                   <path d="M10,50 A40,40 0 0,1 90,50" fill="none" stroke={urgencyPercent > 70 ? 'hsl(0, 72%, 51%)' : urgencyPercent > 40 ? 'hsl(38, 92%, 50%)' : 'hsl(152, 69%, 41%)'} strokeWidth="8" strokeLinecap="round" strokeDasharray={`${urgencyPercent * 1.26} 126`} />
@@ -178,49 +220,52 @@ const BiddingDetail = () => {
                   </span>
                 </div>
               </div>
-              <span className="text-[10px] text-destructive font-semibold uppercase mt-1">Urgency</span>
+              <span className="text-[10px] text-destructive font-bold uppercase mt-1">Urgency</span>
             </div>
 
             <div className="text-center mb-4">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Bid Amount</p>
-              <p className="text-4xl font-bold text-foreground">${bidAmount.toLocaleString()}</p>
+              <p className="text-4xl font-bold text-foreground tracking-tight">${bidAmount.toLocaleString()}</p>
             </div>
 
             {/* Slider */}
             <div className="mb-4">
               <input
                 type="range"
-                min={30000}
-                max={60000}
+                min={canal.currentBidRange.min}
+                max={canal.currentBidRange.max}
                 step={500}
                 value={bidAmount}
                 onChange={e => setBidAmount(Number(e.target.value))}
                 className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-muted [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer"
               />
               <div className="flex justify-between mt-1">
-                <span className="text-[10px] text-muted-foreground">$30k</span>
-                <span className="text-[10px] text-muted-foreground">$60k</span>
+                <span className="text-[10px] text-muted-foreground">${(canal.currentBidRange.min / 1000).toFixed(0)}k</span>
+                <span className="text-[10px] text-muted-foreground">${(canal.currentBidRange.max / 1000).toFixed(0)}k</span>
               </div>
             </div>
 
-            {/* Winning trend & optimal range */}
+            {/* Info cards */}
             <div className="space-y-2 mb-4">
               <div className="glass-panel rounded-lg p-3 flex items-center justify-between">
                 <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Winning Trend</span>
-                <span className="text-sm font-bold text-foreground">Upward ↗</span>
+                <span className="text-sm font-bold text-foreground flex items-center gap-1">Upward <TrendingUp className="w-3.5 h-3.5 text-destructive" /></span>
               </div>
-              <div className="glass-panel rounded-lg p-3 flex items-center gap-2">
-                <span className="text-success">✅</span>
+              <div className={`rounded-lg p-3 flex items-center gap-2 border-2 ${feedback.color === 'text-success' ? 'border-success/20 bg-success/5' : feedback.color === 'text-destructive' ? 'border-destructive/20 bg-destructive/5' : 'border-warning/20 bg-warning/5'}`}>
+                <span className={`text-lg ${feedback.color === 'text-success' ? '' : feedback.color === 'text-destructive' ? '' : ''}`}>
+                  {feedback.color === 'text-success' ? '✅' : feedback.color === 'text-destructive' ? '⚠️' : '💰'}
+                </span>
                 <div>
                   <p className={`text-sm font-bold ${feedback.color}`}>{feedback.text}</p>
-                  <p className="text-[10px] text-muted-foreground">92% chance of winning this slot.</p>
+                  <p className="text-[10px] text-muted-foreground">{feedback.percent}% chance of winning this slot.</p>
                 </div>
               </div>
             </div>
 
-            <button className="w-full py-3 bg-primary text-primary-foreground font-bold rounded-lg hover:opacity-90 transition-opacity text-sm uppercase tracking-wider flex items-center justify-center gap-2">
+            <button className="w-full py-3.5 bg-primary text-primary-foreground font-bold rounded-lg hover:opacity-90 transition-opacity text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm">
               Submit Bid <Send className="w-4 h-4" />
             </button>
+            <p className="text-[10px] text-muted-foreground text-center mt-2">Reviewed by AI before final placement</p>
           </div>
 
           {/* AI Chatbot compact */}
@@ -232,8 +277,5 @@ const BiddingDetail = () => {
     </div>
   );
 };
-
-// Need Send icon
-import { Send } from 'lucide-react';
 
 export default BiddingDetail;
