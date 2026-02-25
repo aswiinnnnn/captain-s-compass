@@ -37,8 +37,8 @@ const Login = () => {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
             <Anchor className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold text-foreground tracking-tight">Captain Voyage</h1>
-          <p className="text-muted-foreground mt-1">Captain Bidding Interface</p>
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">AquaMinds</h1>
+          <p className="text-muted-foreground mt-1">Fleet Operations Interface</p>
         </div>
 
         <div className="glass-panel rounded-xl p-6">
