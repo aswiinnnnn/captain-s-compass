@@ -3,8 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { canalsPorts, previousBids, bidFactors, probabilityData } from '@/data/mockData';
 import AIChatbot from '@/components/AIChatbot';
 import { useChatContext } from '@/contexts/ChatContext';
-import { Download, Zap, ChevronRight, Send, ArrowUp, ArrowDown, Minus, TrendingUp, Shield, AlertTriangle, Clock, Users, Fuel, Anchor, Bot, Timer, Ship, TriangleAlert, DollarSign, CalendarClock } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, ReferenceLine, ReferenceArea } from 'recharts';
+import { Download, Zap, ChevronRight, Send, ArrowUp, ArrowDown, Minus, TrendingUp, Shield, AlertTriangle, Clock, Users, Fuel, Anchor, Bot, Plus, MinusIcon, Timer } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, ReferenceLine, ReferenceArea, Brush } from 'recharts';
 
 const AI_SUGGESTED_BID = 44800;
 
@@ -12,6 +12,7 @@ const AI_SUGGESTED_BID = 44800;
 const generateDailyData = () => {
   const data: any[] = [];
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  // Past data - daily
   const baseHigh = [48,46,44,42,40,38,36,35,34,32,30,28,28,30,32,34,36,38,36,38,40,42,44,46,48,50,48,46,44,42];
   const baseLow = [32,30,29,28,27,26,25,24,23,22,21,20,22,24,26,28,30,32,30,28,30,32,34,36,38,40,38,36,34,32];
   
@@ -27,6 +28,7 @@ const generateDailyData = () => {
     });
   }
 
+  // Future predictions - statistical
   const lastHigh = data[data.length - 1].high;
   const lastLow = data[data.length - 1].low;
   for (let i = 0; i < 15; i++) {
@@ -46,7 +48,7 @@ const generateDailyData = () => {
   return data;
 };
 
-type PredictionModel = 'ai' | 'stochastic' | 'moving_avg' | null;
+type PredictionModel = 'ai' | 'stochastic' | 'moving_avg';
 
 const BiddingDetail = () => {
   const { id } = useParams();
@@ -59,49 +61,8 @@ const BiddingDetail = () => {
   const [predictionModel, setPredictionModel] = useState<PredictionModel>('ai');
   const [dailyData] = useState(generateDailyData);
 
-  // Chart drag/zoom state
-  const chartRef = useRef<HTMLDivElement>(null);
-  const [viewStart, setViewStart] = useState(0);
-  const [viewCount, setViewCount] = useState(30);
-  const [isDragging, setIsDragging] = useState(false);
-  const dragStartX = useRef(0);
-  const dragStartViewStart = useRef(0);
-
-  const visibleData = dailyData.slice(viewStart, viewStart + viewCount);
-
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault();
-    if (e.deltaY < 0) {
-      // zoom in
-      setViewCount(v => Math.max(10, v - 3));
-    } else {
-      // zoom out
-      setViewCount(v => Math.min(dailyData.length, v + 3));
-    }
-  }, [dailyData.length]);
-
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    setIsDragging(true);
-    dragStartX.current = e.clientX;
-    dragStartViewStart.current = viewStart;
-  }, [viewStart]);
-
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!isDragging || !chartRef.current) return;
-    const dx = e.clientX - dragStartX.current;
-    const chartWidth = chartRef.current.offsetWidth;
-    const pointsPerPixel = viewCount / chartWidth;
-    const shift = Math.round(-dx * pointsPerPixel);
-    const newStart = Math.max(0, Math.min(dailyData.length - viewCount, dragStartViewStart.current + shift));
-    setViewStart(newStart);
-  }, [isDragging, viewCount, dailyData.length]);
-
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false);
-  }, []);
-
   // Auction deadline countdown
-  const [deadline, setDeadline] = useState(6 * 3600 + 1423);
+  const [deadline, setDeadline] = useState(6 * 3600 + 1423); // 6h 23m 43s
   useEffect(() => {
     const t = setInterval(() => setDeadline(d => Math.max(0, d - 1)), 1000);
     return () => clearInterval(t);
@@ -112,18 +73,6 @@ const BiddingDetail = () => {
     const sec = s % 60;
     return `${h}h ${m.toString().padStart(2,'0')}m ${sec.toString().padStart(2,'0')}s`;
   };
-
-  // Available slots
-  const availableSlots = [
-    { time: '06:00 UTC', status: 'taken' },
-    { time: '08:00 UTC', status: 'available' },
-    { time: '10:00 UTC', status: 'taken' },
-    { time: '12:00 UTC', status: 'available' },
-    { time: '14:00 UTC', status: 'available' },
-    { time: '16:00 UTC', status: 'taken' },
-    { time: '18:00 UTC', status: 'taken' },
-    { time: '20:00 UTC', status: 'available' },
-  ];
 
   useEffect(() => {
     const stored = localStorage.getItem('voyageguard_captain');
@@ -164,15 +113,14 @@ const BiddingDetail = () => {
     setBidPlaced(false);
   };
 
-  const togglePredictionModel = (m: PredictionModel) => {
-    setPredictionModel(prev => prev === m ? null : m);
-  };
+  // Get prediction lines based on model
+  const getHighKey = () => predictionModel === 'stochastic' ? 'statHigh' : predictionModel === 'ai' ? 'aiHigh' : 'high';
+  const getLowKey = () => predictionModel === 'stochastic' ? 'statLow' : predictionModel === 'ai' ? 'aiLow' : 'low';
 
   const CustomDot = (props: any) => {
     const { cx, cy, payload, dataKey } = props;
     if (!payload.predicted) return <circle cx={cx} cy={cy} r={2.5} fill="hsl(220, 10%, 55%)" />;
     const val = payload[dataKey];
-    if (val === undefined) return null;
     return (
       <g className="cursor-pointer" onClick={() => handleBidFromChart(val)}>
         <circle cx={cx} cy={cy} r={5} fill="hsl(224, 76%, 48%)" stroke="white" strokeWidth={2} />
@@ -180,9 +128,10 @@ const BiddingDetail = () => {
     );
   };
 
-  const futureStartIdx = visibleData.findIndex(d => d.predicted);
-  const futureStartLabel = futureStartIdx >= 0 ? visibleData[futureStartIdx].label : '';
-  const futureEndLabel = visibleData[visibleData.length - 1]?.label || '';
+  // Future area starts at first predicted point
+  const futureStartIdx = dailyData.findIndex(d => d.predicted);
+  const futureStartLabel = futureStartIdx >= 0 ? dailyData[futureStartIdx].label : '';
+  const futureEndLabel = dailyData[dailyData.length - 1].label;
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
@@ -199,6 +148,7 @@ const BiddingDetail = () => {
             <p className="text-xs text-muted-foreground">Vessel: MV Northern Star | ETA: Oct 24, 08:00 UTC</p>
           </div>
           <div className="flex items-center gap-2">
+            {/* Auction Deadline */}
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/10 border border-destructive/20 rounded-lg">
               <Timer className="w-3.5 h-3.5 text-destructive" />
               <span className="text-xs font-bold text-destructive font-mono">{fmtDeadline(deadline)}</span>
@@ -224,63 +174,58 @@ const BiddingDetail = () => {
                 <span className="text-sm">📊</span>
                 <h2 className="text-sm font-bold text-foreground">Bidding Trends & Predictions</h2>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
+                {/* Model selector */}
                 {(['ai', 'stochastic', 'moving_avg'] as PredictionModel[]).map(m => (
                   <button
-                    key={m!}
-                    onClick={() => togglePredictionModel(m)}
+                    key={m}
+                    onClick={() => setPredictionModel(m)}
                     className={`text-[9px] px-2.5 py-1 rounded-full font-semibold transition-colors ${
                       predictionModel === m
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-muted text-muted-foreground hover:text-foreground'
                     }`}
                   >
-                    {m === 'ai' ? '🤖 AI' : m === 'stochastic' ? '📈 Stochastic' : '📉 Moving Avg'}
+                    {m === 'ai' ? '🤖 AI Model' : m === 'stochastic' ? '📈 Stochastic' : '📉 Moving Avg'}
                   </button>
                 ))}
               </div>
             </div>
             <div className="flex items-center gap-4 mb-2 text-[10px]">
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-destructive" /> High</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-success" /> Low</span>
-              {predictionModel && <span className="flex items-center gap-1"><span className="w-3 h-0.5 border-t-2 border-dashed border-primary" /> Predicted</span>}
-              <span className="text-muted-foreground ml-auto">Scroll to zoom · Drag to pan · Click dots to bid</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-destructive" /> High Bids</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-success" /> Low Bids</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-primary opacity-50" style={{borderTop:'2px dashed hsl(224, 76%, 48%)'}}/> Predicted</span>
+              {predictionModel === 'ai' && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-primary/40" /> AI Forecast</span>}
+              <span className="text-muted-foreground ml-auto">🖱 Scroll to zoom • Drag to pan • Click predicted dots to bid</span>
             </div>
-            <div
-              ref={chartRef}
-              className="h-[320px] select-none"
-              style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
-              onWheel={handleWheel}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-            >
+            <div className="h-[320px]">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={visibleData} margin={{ top: 10, right: 10, bottom: 10, left: 0 }}>
+                <LineChart data={dailyData} margin={{ top: 10, right: 10, bottom: 10, left: 0 }}>
                   <defs>
                     <linearGradient id="futureShade" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(224, 76%, 48%)" stopOpacity={0.08} />
+                      <stop offset="0%" stopColor="hsl(224, 76%, 48%)" stopOpacity={0.06} />
                       <stop offset="100%" stopColor="hsl(224, 76%, 48%)" stopOpacity={0.02} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 13%, 91%)" />
-                  <XAxis dataKey="label" stroke="hsl(220, 10%, 55%)" fontSize={9} interval="preserveStartEnd" />
+                  <XAxis dataKey="label" stroke="hsl(220, 10%, 55%)" fontSize={9} interval="preserveStartEnd" tickCount={12} />
                   <YAxis stroke="hsl(220, 10%, 55%)" fontSize={10} tickFormatter={v => `$${v}k`} domain={[15, 60]} />
                   <Tooltip
                     contentStyle={{ background: 'hsl(0, 0%, 100%)', border: '1px solid hsl(220, 13%, 90%)', borderRadius: '8px', fontSize: '11px' }}
-                    formatter={(v: number, name: string) => [`$${Number(v).toFixed(1)}k`, name]}
+                    formatter={(v: number, name: string) => [`$${Number(v).toFixed(1)}k`, name === 'high' ? 'High' : name === 'low' ? 'Low' : name]}
                     labelFormatter={(label: string) => label.includes('*') ? `${label} (Predicted)` : label}
                   />
+                  {/* Future shaded area */}
                   {futureStartLabel && (
                     <ReferenceArea x1={futureStartLabel} x2={futureEndLabel} fill="url(#futureShade)" />
                   )}
-                  {futureStartLabel && (
-                    <ReferenceLine x={futureStartLabel} stroke="hsl(224, 76%, 48%)" strokeWidth={1.5} strokeDasharray="6 4" label={{ value: '← Past | Future →', position: 'top', fill: 'hsl(220, 10%, 55%)', fontSize: 9 }} />
-                  )}
+                  <ReferenceLine x={futureStartLabel} stroke="hsl(224, 76%, 48%)" strokeWidth={1.5} strokeDasharray="6 4" label={{ value: '← Historical | Predicted →', position: 'top', fill: 'hsl(220, 10%, 55%)', fontSize: 9 }} />
+                  
+                  {/* Past lines - solid */}
                   <Line type="monotone" dataKey="high" stroke="hsl(0, 72%, 51%)" strokeWidth={2} dot={<CustomDot />} connectNulls />
                   <Line type="monotone" dataKey="low" stroke="hsl(152, 69%, 41%)" strokeWidth={2} dot={<CustomDot />} connectNulls />
                   
+                  {/* AI prediction lines - dashed, different color */}
                   {predictionModel === 'ai' && (
                     <>
                       <Line type="monotone" dataKey="aiHigh" stroke="hsl(262, 83%, 58%)" strokeWidth={2} strokeDasharray="6 3" dot={<CustomDot />} connectNulls />
@@ -293,11 +238,8 @@ const BiddingDetail = () => {
                       <Line type="monotone" dataKey="statLow" stroke="hsl(38, 70%, 60%)" strokeWidth={2} strokeDasharray="6 3" dot={<CustomDot />} connectNulls />
                     </>
                   )}
-                  {predictionModel === 'moving_avg' && (
-                    <>
-                      <Line type="monotone" dataKey="high" stroke="hsl(180, 60%, 45%)" strokeWidth={2} strokeDasharray="6 3" dot={<CustomDot />} connectNulls />
-                    </>
-                  )}
+                  
+                  <Brush dataKey="label" height={20} stroke="hsl(224, 76%, 48%)" fill="hsl(220, 14%, 96%)" travellerWidth={8} startIndex={20} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -363,105 +305,6 @@ const BiddingDetail = () => {
             </div>
           </div>
 
-          {/* Available Transit Slots */}
-          <div className="glass-panel rounded-xl p-4">
-            <h2 className="text-sm font-bold text-foreground mb-2 flex items-center gap-2">
-              <CalendarClock className="w-4 h-4 text-primary" /> Available Transit Slots
-            </h2>
-            <div className="grid grid-cols-4 gap-2">
-              {availableSlots.map(slot => (
-                <div
-                  key={slot.time}
-                  className={`rounded-lg p-2 text-center text-xs font-semibold border transition-all ${
-                    slot.status === 'available'
-                      ? 'bg-success/10 border-success/30 text-success cursor-pointer hover:bg-success/20 ring-1 ring-success/20'
-                      : 'bg-muted/50 border-border text-muted-foreground line-through opacity-60'
-                  }`}
-                >
-                  {slot.time}
-                  <div className="text-[8px] font-bold uppercase mt-0.5">
-                    {slot.status === 'available' ? '● OPEN' : 'TAKEN'}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* "If You Don't Bid Today" Card */}
-          <div className="glass-panel rounded-xl p-5">
-            <h2 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
-              <TriangleAlert className="w-4 h-4 text-warning" />
-              If You Don't Bid Today
-            </h2>
-
-            {/* Timeline */}
-            <div className="relative pl-8">
-              {/* Vertical line */}
-              <div className="absolute left-3 top-2 bottom-2 w-px bg-border" />
-
-              {/* Step 1 - Arrival */}
-              <div className="relative mb-5">
-                <div className="absolute -left-5 w-6 h-6 rounded-full bg-primary/10 border-2 border-primary flex items-center justify-center">
-                  <Anchor className="w-3 h-3 text-primary" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-foreground">Arrive at {canal.name}</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">Vessel joins the regular queue.</p>
-                  <span className="inline-block mt-1.5 text-[9px] font-bold px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">
-                    Queue Status: High congestion
-                  </span>
-                </div>
-              </div>
-
-              {/* Step 2 - Waiting */}
-              <div className="relative mb-5">
-                <div className="absolute -left-5 w-6 h-6 rounded-full bg-warning/10 border-2 border-warning flex items-center justify-center">
-                  <Clock className="w-3 h-3 text-warning" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-foreground">Expected waiting time: 3–4 days</p>
-                  <div className="mt-2 w-full h-2 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full rounded-full bg-warning" style={{ width: '75%' }} />
-                  </div>
-                  <div className="flex justify-between mt-1">
-                    <span className="text-[9px] text-muted-foreground">0 days</span>
-                    <span className="text-[9px] text-warning font-bold">~3.5 days</span>
-                    <span className="text-[9px] text-muted-foreground">5 days</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Step 3 - Schedule Impact */}
-              <div className="relative mb-5">
-                <div className="absolute -left-5 w-6 h-6 rounded-full bg-warning/10 border-2 border-warning flex items-center justify-center">
-                  <TriangleAlert className="w-3 h-3 text-warning" />
-                </div>
-                <div className="bg-warning/5 border border-warning/20 rounded-lg p-3">
-                  <p className="text-xs font-bold text-foreground">Risk of missing destination port window</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">Voyage schedule may be disrupted. Downstream berth reservations at risk.</p>
-                </div>
-              </div>
-
-              {/* Step 4 - Financial Impact */}
-              <div className="relative mb-4">
-                <div className="absolute -left-5 w-6 h-6 rounded-full bg-destructive/10 border-2 border-destructive flex items-center justify-center">
-                  <DollarSign className="w-3 h-3 text-destructive" />
-                </div>
-                <div className="text-center py-3">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-1">Estimated Delay Cost</p>
-                  <p className="text-3xl font-extrabold text-destructive">$300k+</p>
-                  <p className="text-[10px] text-muted-foreground mt-1">Based on $85k/day delay cost and current congestion.</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom insight banner */}
-            <div className="mt-2 bg-success/10 border border-success/20 rounded-lg px-4 py-2.5 flex items-center gap-2">
-              <span className="text-success text-sm">💡</span>
-              <p className="text-xs font-semibold text-success">Waiting may cost more than bidding today.</p>
-            </div>
-          </div>
-
           {/* Bid Impact Factors */}
           <div className="glass-panel rounded-xl p-4">
             <h2 className="text-sm font-bold text-foreground mb-2">AI Bid Impact Factors</h2>
@@ -517,10 +360,11 @@ const BiddingDetail = () => {
           </div>
         </div>
 
-        {/* MIDDLE - Place Bid (fixed, non-scrollable) */}
-        <div className="hidden lg:flex w-[280px] border-l border-border flex-col h-full overflow-hidden shrink-0 bg-card">
-          <div className="p-4 flex-1 flex flex-col">
-            <div className="flex items-center justify-between mb-3">
+        {/* RIGHT panel - Fixed: AI + Bid Placement */}
+        <div className="hidden lg:flex w-[340px] border-l border-border flex-col h-full overflow-hidden shrink-0 bg-card">
+          {/* Place Bid section - top */}
+          <div className="p-4 border-b border-border shrink-0">
+            <div className="flex items-center justify-between mb-2">
               <h2 className="text-sm font-bold text-foreground">Place Live Bid</h2>
               <div className="flex items-center gap-1 text-[9px] text-destructive font-bold">
                 <Timer className="w-3 h-3" />
@@ -529,20 +373,22 @@ const BiddingDetail = () => {
             </div>
 
             {bidPlaced ? (
+              /* Bid placed confirmation */
               <div className="space-y-3">
-                <div className="bg-primary/5 border-2 border-primary/20 rounded-xl p-4 text-center">
+                <div className="bg-primary/5 border-2 border-primary/20 rounded-xl p-3 text-center">
                   <p className="text-[10px] text-primary font-bold uppercase tracking-wider mb-1">Bid Submitted</p>
-                  <p className="text-3xl font-bold text-foreground">${placedAmount.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-foreground">${placedAmount.toLocaleString()}</p>
                   <p className="text-[10px] text-muted-foreground mt-1">⏳ Waiting for auction result...</p>
                   <p className="text-[9px] text-muted-foreground">Queue Position: #7 of 24</p>
                 </div>
-                <button onClick={handleModifyBid} className="w-full py-2.5 border-2 border-warning/30 text-warning font-semibold rounded-lg hover:bg-warning/5 transition-colors text-xs">
+                <button onClick={handleModifyBid} className="w-full py-2 border-2 border-warning/30 text-warning font-semibold rounded-lg hover:bg-warning/5 transition-colors text-xs">
                   Modify Bid & Resubmit
                 </button>
               </div>
             ) : (
-              <div className="space-y-4">
-                {/* Urgency gauge */}
+              /* Bid slider + submit */
+              <div className="space-y-3">
+                {/* Urgency gauge mini */}
                 <div className="flex items-center gap-3">
                   <div className="relative w-16 h-8 overflow-hidden shrink-0">
                     <svg viewBox="0 0 100 50" className="w-full h-full">
@@ -556,22 +402,22 @@ const BiddingDetail = () => {
                   </div>
                 </div>
 
-                {/* Gradient slider - BIGGER */}
+                {/* Gradient slider */}
                 <div className="relative">
-                  {/* AI marker */}
-                  <div className="relative h-6 mb-1">
+                  {/* AI marker on track */}
+                  <div className="relative h-5 mb-0.5">
                     <div className="absolute -translate-x-1/2 flex flex-col items-center z-10" style={{ left: `${aiSuggestedPercent}%` }}>
-                      <div className="bg-primary text-primary-foreground text-[8px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap shadow-lg border border-primary-foreground/20">
-                        ✨ AI: ${(AI_SUGGESTED_BID / 1000).toFixed(1)}k
+                      <div className="bg-primary text-primary-foreground text-[8px] font-bold px-1.5 py-0.5 rounded-md whitespace-nowrap shadow-md">
+                        AI: ${(AI_SUGGESTED_BID / 1000).toFixed(1)}k
                       </div>
-                      <div className="w-0 h-0 border-l-[5px] border-r-[5px] border-t-[5px] border-l-transparent border-r-transparent border-t-primary" />
+                      <div className="w-0 h-0 border-l-[4px] border-r-[4px] border-t-[4px] border-l-transparent border-r-transparent border-t-primary" />
                     </div>
                   </div>
                   {/* Gradient track */}
-                  <div className="relative h-4 rounded-full overflow-hidden shadow-inner" style={{ background: 'linear-gradient(to right, hsl(152, 69%, 41%), hsl(80, 60%, 50%), hsl(60, 70%, 50%), hsl(38, 92%, 50%), hsl(15, 80%, 50%), hsl(0, 72%, 51%))' }}>
-                    {/* AI marker line on bar */}
-                    <div className="absolute top-0 bottom-0 w-1 bg-primary z-10 shadow-lg" style={{ left: `${aiSuggestedPercent}%`, transform: 'translateX(-50%)' }}>
-                      <div className="absolute -top-1 -bottom-1 -left-1 w-3 border-2 border-primary rounded-sm animate-pulse" />
+                  <div className="relative h-3 rounded-full overflow-hidden" style={{ background: 'linear-gradient(to right, hsl(152, 69%, 41%), hsl(60, 70%, 50%), hsl(38, 92%, 50%), hsl(0, 72%, 51%))' }}>
+                    {/* AI suggested marker on bar */}
+                    <div className="absolute top-0 bottom-0 w-0.5 bg-primary-foreground/80 z-10" style={{ left: `${aiSuggestedPercent}%` }}>
+                      <div className="absolute -top-0.5 -bottom-0.5 -left-1 w-2.5 border-2 border-primary-foreground rounded-sm opacity-80" />
                     </div>
                   </div>
                   <input
@@ -581,12 +427,12 @@ const BiddingDetail = () => {
                     step={500}
                     value={bidAmount}
                     onChange={e => setBidAmount(Number(e.target.value))}
-                    className="absolute inset-0 w-full h-4 opacity-0 cursor-pointer z-20"
-                    style={{ top: '28px' }}
+                    className="absolute inset-0 w-full h-3 opacity-0 cursor-pointer z-20"
+                    style={{ top: '24px' }}
                   />
-                  {/* Thumb */}
-                  <div className="absolute h-6 w-6 rounded-full bg-foreground border-3 border-background shadow-xl z-10 -translate-x-1/2 pointer-events-none" style={{ left: `${((bidAmount - canal.currentBidRange.min) / (canal.currentBidRange.max - canal.currentBidRange.min)) * 100}%`, top: '25px' }} />
-                  <div className="flex justify-between mt-3">
+                  {/* Thumb indicator */}
+                  <div className="absolute h-5 w-5 rounded-full bg-foreground border-2 border-background shadow-lg z-10 -translate-x-1/2 pointer-events-none" style={{ left: `${((bidAmount - canal.currentBidRange.min) / (canal.currentBidRange.max - canal.currentBidRange.min)) * 100}%`, top: '20px' }} />
+                  <div className="flex justify-between mt-2">
                     <span className="text-[10px] text-success font-bold">${(canal.currentBidRange.min / 1000).toFixed(0)}k</span>
                     <span className="text-[10px] text-destructive font-bold">${(canal.currentBidRange.max / 1000).toFixed(0)}k</span>
                   </div>
@@ -602,11 +448,11 @@ const BiddingDetail = () => {
               </div>
             )}
           </div>
-        </div>
 
-        {/* RIGHT - AI Chatbot (fixed) */}
-        <div className="hidden lg:flex w-[320px] border-l border-border flex-col h-full overflow-hidden shrink-0">
-          <AIChatbot canalName={canal.name} bidAmount={bidAmount} />
+          {/* AI Chatbot - fills remaining space */}
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <AIChatbot canalName={canal.name} bidAmount={bidAmount} />
+          </div>
         </div>
       </div>
     </div>
