@@ -5,7 +5,7 @@ import VoyageMap from '@/components/VoyageMap';
 import ShipInfoPanel from '@/components/ShipInfoPanel';
 import CanalPortCards from '@/components/CanalPortCards';
 import AIChatbot from '@/components/AIChatbot';
-import { Anchor, Bell, Settings, Search, TrendingUp, DollarSign, Clock, AlertTriangle } from 'lucide-react';
+import { Anchor, Bell, Settings, Search } from 'lucide-react';
 import NavTab from '@/components/NavTab';
 
 const Dashboard = () => {
@@ -22,7 +22,6 @@ const Dashboard = () => {
     setCaptain(JSON.parse(stored));
   }, [navigate]);
 
-  // Live clock
   useEffect(() => {
     const interval = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(interval);
@@ -36,7 +35,7 @@ const Dashboard = () => {
   if (!captain) return null;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Top Bar */}
       <header className="h-14 border-b border-border flex items-center justify-between px-6 bg-card shrink-0">
         <div className="flex items-center gap-6">
@@ -74,20 +73,19 @@ const Dashboard = () => {
       </header>
 
       {/* Main content */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left panel - Persistent Chatbot */}
-        <div className="hidden lg:flex w-[30%] max-w-[380px] min-w-[320px] border-r border-border flex-col">
-          <AIChatbot />
-        </div>
-
-        {/* Right panel - Map & Cards */}
+      <div className="flex flex-1 min-h-0">
+        {/* Left panel - Map & Cards */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
-          {/* Map with overlay */}
           <div className="relative">
             <VoyageMap shipPosition={captain.position} onCanalClick={cp => navigate(`/bidding/${cp.id}`)} />
             <ShipInfoPanel captain={captain} />
           </div>
           <CanalPortCards />
+        </div>
+
+        {/* Right panel - Persistent Chatbot (fixed height) */}
+        <div className="hidden lg:flex w-[30%] max-w-[380px] min-w-[320px] border-l border-border flex-col h-full overflow-hidden shrink-0">
+          <AIChatbot />
         </div>
       </div>
 
