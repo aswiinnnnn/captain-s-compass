@@ -4,7 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import { canalsPorts, routeWaypoints, type CanalPort } from '@/data/mockData';
 
 interface VoyageMapProps {
-  shipPosition: { lat: number; lng: number };
+  shipPosition: { lat?: number; lng?: number; x?: number; y?: number };
   onCanalClick?: (canal: CanalPort) => void;
 }
 
@@ -12,11 +12,14 @@ const VoyageMap = ({ shipPosition, onCanalClick }: VoyageMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
 
+  const lat = shipPosition.lat ?? 35.5;
+  const lng = shipPosition.lng ?? 12.5;
+
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
 
     const map = L.map(mapRef.current, {
-      center: [shipPosition.lat, shipPosition.lng],
+      center: [lat, lng],
       zoom: 4,
       zoomControl: false,
       attributionControl: false,
@@ -40,7 +43,7 @@ const VoyageMap = ({ shipPosition, onCanalClick }: VoyageMapProps) => {
 
     // Traveled portion (solid)
     const shipIdx = routeWaypoints.findIndex(
-      ([lat, lng]) => Math.abs(lat - shipPosition.lat) < 2 && Math.abs(lng - shipPosition.lng) < 5
+      ([wLat, wLng]) => Math.abs(wLat - lat) < 2 && Math.abs(wLng - lng) < 5
     );
     if (shipIdx >= 0) {
       const traveledPath = routeWaypoints.slice(0, shipIdx + 1);
@@ -64,7 +67,7 @@ const VoyageMap = ({ shipPosition, onCanalClick }: VoyageMapProps) => {
       iconAnchor: [18, 18],
     });
 
-    L.marker([shipPosition.lat, shipPosition.lng], { icon: shipIcon })
+    L.marker([lat, lng], { icon: shipIcon })
       .addTo(map)
       .bindTooltip('MV Atlantic Star', {
         permanent: true,
@@ -107,7 +110,7 @@ const VoyageMap = ({ shipPosition, onCanalClick }: VoyageMapProps) => {
       map.remove();
       mapInstanceRef.current = null;
     };
-  }, [shipPosition, onCanalClick]);
+  }, [lat, lng]);
 
   return (
     <div className="relative w-full h-[420px] rounded-xl overflow-hidden border border-border shadow-sm">
