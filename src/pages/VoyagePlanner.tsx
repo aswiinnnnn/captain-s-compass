@@ -11,7 +11,7 @@ import NavTab from '@/components/NavTab';
 import {
   Anchor, Bell, Settings, Search, ChevronDown, ChevronUp, ArrowUpDown,
   Ship, MapPin, Calendar, Clock, Fuel, Navigation, Route, Play, Pause,
-  Layers, Plus, Table2, Trash2, Upload, Check, X, Info, Wind, Compass,
+  Layers, Plus, Table2, Trash2, Upload, Check, X, Info, Wind,
 } from 'lucide-react';
 
 type OptimizeMode = 'fixed-eta' | 'lowest-cost' | 'fixed-instruction';
@@ -211,51 +211,46 @@ const VoyagePlanner = () => {
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
-      {/* Top Nav - Deep navy */}
-      <header className="h-12 flex items-center justify-between px-5 shrink-0" style={{ background: '#0D133B' }}>
-        <div className="flex items-center gap-5">
+      {/* Top Bar */}
+      <header className="h-14 border-b border-border flex items-center justify-between px-6 bg-card shrink-0">
+        <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
-            <Compass className="w-5 h-5 text-white/80" />
-            <span className="font-bold text-white text-sm tracking-wide">VoyageOS</span>
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+              <Anchor className="w-4 h-4 text-primary-foreground" />
+            </div>
+            <span className="font-bold text-foreground text-base">Captain Voyage</span>
           </div>
-          <nav className="hidden md:flex items-center gap-0.5">
-            {[
-              { label: 'Fleet Overview', path: '/fleet', active: false },
-              { label: 'Dashboard', path: '/dashboard', active: false },
-              { label: 'Voyage Planner', path: '/voyage-planner', active: true },
-            ].map(tab => (
-              <button
-                key={tab.label}
-                onClick={() => navigate(tab.path)}
-                className={`px-3 py-1 text-xs font-medium transition-colors ${
-                  tab.active
-                    ? 'text-white border-b-2 border-[#0066CC]'
-                    : 'text-white/50 hover:text-white/80'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+          <nav className="hidden md:flex items-center gap-1">
+            <NavTab onClick={() => navigate('/fleet')}>Fleet Overview</NavTab>
+            <NavTab onClick={() => navigate('/dashboard')}>Dashboard</NavTab>
+            <NavTab active>Voyage Planner</NavTab>
+            <NavTab>Fleet Analytics</NavTab>
           </nav>
         </div>
         <div className="flex items-center gap-3">
-          <button className="p-1.5 rounded text-white/50 hover:text-white transition-colors relative">
+          <div className="hidden sm:flex items-center gap-2 bg-muted rounded-lg px-3 py-1.5">
+            <Search className="w-3.5 h-3.5 text-muted-foreground" />
+            <input placeholder="Search ports, vessels..." className="bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none w-40" />
+          </div>
+          <button className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground relative">
             <Bell className="w-4 h-4" />
-            <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-destructive rounded-full animate-pulse" />
+            <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-destructive rounded-full text-[7px] text-destructive-foreground flex items-center justify-center font-bold">3</span>
           </button>
-          <button onClick={logout} className="w-7 h-7 rounded-full bg-white/10 text-white flex items-center justify-center text-[10px] font-bold">MZ</button>
-          <span className="text-[10px] text-white/60 hidden lg:block">Marko Zelger – Fleet Demo</span>
+          <button className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+            <Settings className="w-4 h-4" />
+          </button>
+          <button onClick={logout} className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shadow-sm">D</button>
         </div>
       </header>
 
       {/* Context strip */}
-      <div className="h-10 border-b border-border flex items-center justify-between px-5 bg-card shrink-0">
+      <div className="h-9 border-b border-border flex items-center justify-between px-6 bg-muted/30 shrink-0">
         <button onClick={() => navigate('/fleet')} className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
           ← BACK TO FLEET
         </button>
         <button
           onClick={() => { setStep('form'); setRouteOptions([]); setSelectedRoute(null); setConfirmed(false); }}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0066CC] text-white text-xs font-semibold rounded hover:opacity-90 transition-opacity"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-semibold rounded-md hover:bg-primary/90 transition-colors"
         >
           <Route className="w-3.5 h-3.5" /> NEW VOYAGE
         </button>
@@ -802,28 +797,37 @@ const VoyagePlanner = () => {
         </div>
       </div>
 
-      {/* Bottom Timeline Scrubber */}
-      <div className="h-12 shrink-0 flex items-center px-5 gap-4" style={{ background: 'linear-gradient(to right, #0D133B, #121B4A)' }}>
-        <span className="text-[10px] text-white/70 font-mono whitespace-nowrap">
-          {new Date().toISOString().slice(0, 10)} {new Date().toISOString().slice(11, 16)} UTC
-        </span>
-        <button onClick={() => setIsPlaying(!isPlaying)} className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
-          {isPlaying ? <Pause className="w-3 h-3 text-white" /> : <Play className="w-3 h-3 text-white ml-0.5" />}
-        </button>
-        <div className="flex-1 relative">
-          <div className="h-0.5 bg-white/10 rounded-full w-full" />
-          <input
-            type="range" min={0} max={7} step={0.01} value={timelineDay}
-            onChange={e => setTimelineDay(parseFloat(e.target.value))}
-            className="absolute inset-0 w-full opacity-0 cursor-pointer"
-            style={{ height: '20px', top: '-8px' }}
-          />
-          <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg border-2 border-[#0066CC] transition-all" style={{ left: `${(timelineDay / 7) * 100}%` }} />
-          <div className="flex justify-between absolute w-full top-2 text-[8px] text-white/40 font-mono">
-            {Array.from({ length: 8 }, (_, i) => <span key={i}>+{i}d</span>)}
+      {/* Bottom Status Bar */}
+      <footer className="h-8 border-t border-border flex items-center justify-between px-6 bg-card text-[10px] shrink-0">
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-1 text-success font-bold">
+            <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+            ROUTE ENGINE: ONLINE
+          </span>
+          <span className="text-muted-foreground">Timeline: +{timelineDay.toFixed(1)}d</span>
+          <button onClick={() => setIsPlaying(!isPlaying)} className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
+            {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+            {isPlaying ? 'Pause' : 'Play'}
+          </button>
+          <div className="flex-1 max-w-xs relative">
+            <div className="h-1 bg-border rounded-full w-full" />
+            <input
+              type="range" min={0} max={7} step={0.01} value={timelineDay}
+              onChange={e => setTimelineDay(parseFloat(e.target.value))}
+              className="absolute inset-0 w-full opacity-0 cursor-pointer"
+              style={{ height: '16px', top: '-6px' }}
+            />
+            <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-primary rounded-full shadow-sm transition-all" style={{ left: `${(timelineDay / 7) * 100}%` }} />
           </div>
+          <span className="text-muted-foreground font-mono">
+            {Array.from({ length: 8 }, (_, i) => i === Math.round(timelineDay) ? `[+${i}d]` : '').filter(Boolean)[0] || `+${Math.round(timelineDay)}d`}
+          </span>
         </div>
-      </div>
+        <div className="flex items-center gap-4">
+          <span className="text-muted-foreground font-mono">SERVER TIME: {new Date().toUTCString().slice(17, 25)} UTC</span>
+          <span className="text-success font-bold">SYSTEM STATUS: ALL GREEN</span>
+        </div>
+      </footer>
 
       <style>{`
         .leaflet-control-zoom {
