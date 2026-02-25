@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import BiddingDetail from "./pages/BiddingDetail";
 import FleetOverview from "./pages/FleetOverview";
 import RiskAnalysis from "./pages/RiskAnalysis";
+import VoyagePlanner from "./pages/VoyagePlanner";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/bidding/:id" element={<BiddingDetail />} />
             <Route path="/risk/:id" element={<RiskAnalysis />} />
+            <Route path="/voyage-planner" element={<VoyagePlanner />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

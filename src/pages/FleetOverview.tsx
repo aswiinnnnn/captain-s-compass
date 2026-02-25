@@ -269,7 +269,7 @@ const FleetOverview = () => {
           <nav className="hidden md:flex items-center gap-1">
             <NavTab active onClick={() => navigate('/fleet')}>Fleet Overview</NavTab>
             <NavTab onClick={() => navigate('/dashboard')}>Dashboard</NavTab>
-            <NavTab>Bidding Hub</NavTab>
+            <NavTab onClick={() => navigate('/voyage-planner')}>Voyage Planner</NavTab>
             <NavTab>Fleet Analytics</NavTab>
           </nav>
         </div>
