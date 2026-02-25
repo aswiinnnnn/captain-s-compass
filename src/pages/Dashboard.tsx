@@ -75,19 +75,19 @@ const Dashboard = () => {
 
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left panel */}
-        <div className="flex-1 lg:w-[70%] overflow-y-auto p-5 space-y-5">
+        {/* Left panel - Persistent Chatbot */}
+        <div className="hidden lg:flex w-[30%] max-w-[380px] min-w-[320px] border-r border-border flex-col">
+          <AIChatbot />
+        </div>
+
+        {/* Right panel - Map & Cards */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
           {/* Map with overlay */}
           <div className="relative">
             <VoyageMap shipPosition={captain.position} onCanalClick={cp => navigate(`/bidding/${cp.id}`)} />
             <ShipInfoPanel captain={captain} />
           </div>
           <CanalPortCards />
-        </div>
-
-        {/* Right panel - Chatbot */}
-        <div className="hidden lg:block w-[30%] max-w-[380px] border-l border-border p-4">
-          <AIChatbot />
         </div>
       </div>
 

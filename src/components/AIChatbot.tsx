@@ -1,99 +1,37 @@
 import { useState, useRef, useEffect } from 'react';
-import { getAIResponse, type ChatMessage } from '@/data/mockData';
+import { useChatContext } from '@/contexts/ChatContext';
 import { Bot, Send, User, Sparkles, MoreVertical } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 interface AIChatbotProps {
   canalName?: string;
   bidAmount?: number;
-  compact?: boolean;
 }
 
-const AIChatbot = ({ canalName, bidAmount, compact }: AIChatbotProps) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: '1',
-      role: 'ai',
-      content: compact
-        ? `Based on your vessel's ETA and current queue, a bid of **$44,800** is recommended.`
-        : `Good morning, Captain. I've analyzed the Suez Canal bidding trends. Current median bids for Northbound transit on Oct 24 are up 12% due to increased traffic.`,
-      timestamp: new Date(),
-    },
-  ]);
+const AIChatbot = ({ canalName, bidAmount }: AIChatbotProps) => {
+  const { messages, isTyping, sendMessage } = useChatContext();
   const [input, setInput] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  // Auto-send a follow-up message for demo richness
-  useEffect(() => {
-    if (!compact && messages.length === 1) {
-      const timer = setTimeout(() => {
-        setMessages(prev => [
-          ...prev,
-          {
-            id: '2',
-            role: 'user',
-            content: 'Should we increase our bid to ensure priority slot?',
-            timestamp: new Date(),
-          },
-        ]);
-        setIsTyping(true);
-        setTimeout(() => {
-          setMessages(prev => [
-            ...prev,
-            {
-              id: '3',
-              role: 'ai',
-              content: `I recommend increasing the bid by **$4,500**. This places you in the 85th percentile of current bids and ensures transit before the predicted weather deterioration in the Red Sea.`,
-              timestamp: new Date(),
-              card: {
-                type: 'recommendation',
-                confidence: 94,
-                amount: 142500,
-              },
-            },
-          ]);
-          setIsTyping(false);
-        }, 1500);
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [compact]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
-  const sendMessage = () => {
+  const handleSend = () => {
     if (!input.trim()) return;
-    const userMsg: ChatMessage = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: input,
-      timestamp: new Date(),
-    };
-    setMessages(prev => [...prev, userMsg]);
+    sendMessage(input, { canalName, bidAmount });
     setInput('');
-    setIsTyping(true);
-
-    setTimeout(() => {
-      const response = getAIResponse(input, { canalName, bidAmount });
-      const aiMsg: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'ai',
-        content: response,
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, aiMsg]);
-      setIsTyping(false);
-    }, 800 + Math.random() * 1200);
   };
 
   const formatTime = (d: Date) => d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 
-  const quickActions = compact
-    ? ['Adjust for weather?', 'Show factors']
-    : ['Fuel Efficiency', 'Weather Alert', 'Bid History', 'Analyze Factors'];
+  const quickActions = [
+    'Should I bid now?',
+    'What happens if I wait?',
+    'Set maximum bid',
+    'Explain recommendation',
+    'Show market conditions',
+  ];
 
   return (
     <div className="flex flex-col h-full bg-chat-bg rounded-xl border border-border overflow-hidden">
@@ -104,7 +42,7 @@ const AIChatbot = ({ canalName, bidAmount, compact }: AIChatbotProps) => {
             <Sparkles className="w-4 h-4 text-primary" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground">{compact ? 'AI Bidding Assistant' : 'Voyage Assistant'}</p>
+            <p className="text-sm font-semibold text-foreground">Voyage Assistant</p>
             <p className="text-[10px] text-success font-bold uppercase tracking-wider flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
               AI Agent Online
@@ -171,33 +109,33 @@ const AIChatbot = ({ canalName, bidAmount, compact }: AIChatbotProps) => {
         )}
       </div>
 
-      {/* Input */}
+      {/* Quick Actions + Input */}
       <div className="p-3 border-t border-border bg-card">
-        <div className="flex gap-2">
-          <input
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && sendMessage()}
-            placeholder={compact ? 'Ask AI Assistant...' : 'Ask about routes, bids, or weather...'}
-            className="flex-1 px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
-          />
-          <button
-            onClick={sendMessage}
-            className="px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
-          >
-            <Send className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="flex gap-2 mt-2 flex-wrap">
+        <div className="flex gap-2 mb-2 flex-wrap">
           {quickActions.map(action => (
             <button
               key={action}
-              onClick={() => { setInput(action); }}
-              className="text-[11px] px-3 py-1 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors bg-card"
+              onClick={() => { sendMessage(action, { canalName, bidAmount }); }}
+              className="text-[11px] px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors bg-card font-medium"
             >
               {action}
             </button>
           ))}
+        </div>
+        <div className="flex gap-2">
+          <input
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSend()}
+            placeholder="Ask about bidding strategy..."
+            className="flex-1 px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
+          />
+          <button
+            onClick={handleSend}
+            className="px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+          >
+            <Send className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </div>

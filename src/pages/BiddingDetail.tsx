@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { canalsPorts, previousBids, bidFactors, probabilityData } from '@/data/mockData';
 import AIChatbot from '@/components/AIChatbot';
-import { Download, Zap, ChevronRight, Send, ArrowUp, ArrowDown, Minus, TrendingUp, Shield, AlertTriangle, Clock, Users } from 'lucide-react';
+import { Download, Zap, ChevronRight, Send, ArrowUp, ArrowDown, Minus, TrendingUp, Shield, AlertTriangle, Clock, Users, Fuel, Anchor } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, ReferenceLine } from 'recharts';
 
 const biddingTrends = [
@@ -71,8 +71,37 @@ const BiddingDetail = () => {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Left content */}
-        <div className="flex-1 lg:w-[65%] overflow-y-auto p-6 space-y-6">
+        {/* Left panel - AI Chatbot (persistent) */}
+        <div className="hidden lg:flex w-[30%] max-w-[380px] min-w-[320px] border-r border-border flex-col">
+          <AIChatbot canalName={canal.name} bidAmount={bidAmount} />
+        </div>
+
+        {/* Center content */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* Harbor Logistics & Metrics - 3x2 grid */}
+          <div>
+            <h3 className="text-sm font-bold text-foreground uppercase tracking-wider mb-3">Harbor Logistics & Metrics</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {[
+                { label: 'QUEUE LENGTH', value: String(canal.queueLength), sub: 'vessels', icon: Users, accent: 'text-primary' },
+                { label: 'AVG WAITING', value: '18h', sub: '+2h vs. normal', icon: Clock, accent: 'text-warning' },
+                { label: 'WATER LEVEL', value: '+0.5m', sub: 'Optimal Draft', icon: TrendingUp, accent: 'text-success' },
+                { label: 'DEMURRAGE', value: '$850', sub: '/hr Standard', icon: AlertTriangle, accent: 'text-muted-foreground' },
+                { label: 'BID CEILING', value: `$${(canal.currentBidRange.max / 1000).toFixed(0)}k`, sub: 'Hard Limit', icon: Shield, accent: 'text-destructive' },
+                { label: 'FUEL COST', value: '$12.4k', sub: 'Est. Transit Fuel', icon: Fuel, accent: 'text-primary' },
+              ].map(m => (
+                <div key={m.label} className="glass-panel rounded-xl p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{m.label}</p>
+                    <m.icon className={`w-3.5 h-3.5 ${m.accent}`} />
+                  </div>
+                  <p className="text-2xl font-bold text-foreground">{m.value}</p>
+                  <p className={`text-[10px] ${m.accent}`}>{m.sub}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Bidding Trends Chart */}
           <div className="glass-panel rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
@@ -96,29 +125,6 @@ const BiddingDetail = () => {
                   <Line type="monotone" dataKey="low" stroke="hsl(152, 69%, 41%)" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Harbor Logistics & Metrics */}
-          <div>
-            <h3 className="text-sm font-bold text-foreground uppercase tracking-wider mb-3">Harbor Logistics & Metrics</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-              {[
-                { label: 'QUEUE LENGTH', value: String(canal.queueLength), sub: 'vessels', icon: Users, accent: 'text-primary' },
-                { label: 'AVG WAITING', value: '18h', sub: '+2h vs. normal', icon: Clock, accent: 'text-warning' },
-                { label: 'WATER LEVEL', value: '+0.5m', sub: 'Optimal Draft', icon: TrendingUp, accent: 'text-success' },
-                { label: 'DEMURRAGE', value: '$850', sub: '/hr Standard', icon: AlertTriangle, accent: 'text-muted-foreground' },
-                { label: 'BID CEILING', value: `$${(canal.currentBidRange.max / 1000).toFixed(0)}k`, sub: 'Hard Limit', icon: Shield, accent: 'text-destructive' },
-              ].map(m => (
-                <div key={m.label} className="glass-panel rounded-xl p-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{m.label}</p>
-                    <m.icon className={`w-3.5 h-3.5 ${m.accent}`} />
-                  </div>
-                  <p className="text-2xl font-bold text-foreground">{m.value}</p>
-                  <p className={`text-[10px] ${m.accent}`}>{m.sub}</p>
-                </div>
-              ))}
             </div>
           </div>
 
@@ -201,10 +207,9 @@ const BiddingDetail = () => {
           </div>
         </div>
 
-        {/* Right panel */}
-        <div className="hidden lg:flex w-[35%] max-w-[400px] border-l border-border flex-col">
-          {/* Place Live Bid */}
-          <div className="p-5 border-b border-border bg-card">
+        {/* Right panel - Place Bid */}
+        <div className="hidden lg:flex w-[280px] border-l border-border flex-col bg-card">
+          <div className="p-5 flex-1 overflow-y-auto">
             <h2 className="text-lg font-bold text-foreground text-center mb-4">Place Live Bid</h2>
 
             {/* Urgency gauge */}
@@ -252,7 +257,7 @@ const BiddingDetail = () => {
                 <span className="text-sm font-bold text-foreground flex items-center gap-1">Upward <TrendingUp className="w-3.5 h-3.5 text-destructive" /></span>
               </div>
               <div className={`rounded-lg p-3 flex items-center gap-2 border-2 ${feedback.color === 'text-success' ? 'border-success/20 bg-success/5' : feedback.color === 'text-destructive' ? 'border-destructive/20 bg-destructive/5' : 'border-warning/20 bg-warning/5'}`}>
-                <span className={`text-lg ${feedback.color === 'text-success' ? '' : feedback.color === 'text-destructive' ? '' : ''}`}>
+                <span>
                   {feedback.color === 'text-success' ? '✅' : feedback.color === 'text-destructive' ? '⚠️' : '💰'}
                 </span>
                 <div>
@@ -266,11 +271,6 @@ const BiddingDetail = () => {
               Submit Bid <Send className="w-4 h-4" />
             </button>
             <p className="text-[10px] text-muted-foreground text-center mt-2">Reviewed by AI before final placement</p>
-          </div>
-
-          {/* AI Chatbot compact */}
-          <div className="flex-1 overflow-hidden">
-            <AIChatbot canalName={canal.name} bidAmount={bidAmount} compact />
           </div>
         </div>
       </div>
