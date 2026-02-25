@@ -53,7 +53,7 @@ const CanalPortCards = () => {
                   </span>
                 )}
                 {cp.weatherRisk === 'Low' && (
-                  <span>☀️ Clear</span>
+                  <span className="flex items-center gap-1">Clear</span>
                 )}
               </div>
 

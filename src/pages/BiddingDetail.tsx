@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { canalsPorts, previousBids, bidFactors, probabilityData } from '@/data/mockData';
 import AIChatbot from '@/components/AIChatbot';
 import { useChatContext } from '@/contexts/ChatContext';
-import { Download, Zap, ChevronRight, Send, ArrowUp, ArrowDown, Minus, TrendingUp, Shield, AlertTriangle, Clock, Users, Fuel, Anchor, Bot, Timer, Ship, TriangleAlert, DollarSign, CalendarClock } from 'lucide-react';
+import { Download, Zap, ChevronRight, Send, ArrowUp, ArrowDown, Minus, TrendingUp, Shield, AlertTriangle, Clock, Users, Fuel, Anchor, Bot, Timer, Ship, TriangleAlert, DollarSign, CalendarClock, Sparkles } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, ReferenceLine, ReferenceArea } from 'recharts';
 
 const AI_SUGGESTED_BID = 44800;
@@ -127,7 +127,7 @@ const BiddingDetail = () => {
 
   useEffect(() => {
     const stored = localStorage.getItem('voyageguard_captain');
-    if (!stored) navigate('/');
+    if (!stored) navigate('/login');
   }, [navigate]);
 
   if (!canal) {
@@ -221,7 +221,7 @@ const BiddingDetail = () => {
           <div className="glass-panel rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <span className="text-sm">📊</span>
+                <TrendingUp className="w-4 h-4 text-primary" />
                 <h2 className="text-sm font-bold text-foreground">Bidding Trends & Predictions</h2>
               </div>
               <div className="flex items-center gap-1.5">
@@ -235,7 +235,7 @@ const BiddingDetail = () => {
                         : 'bg-muted text-muted-foreground hover:text-foreground'
                     }`}
                   >
-                    {m === 'ai' ? '🤖 AI' : m === 'stochastic' ? '📈 Stochastic' : '📉 Moving Avg'}
+                    {m === 'ai' ? 'AI' : m === 'stochastic' ? 'Stochastic' : 'Moving Avg'}
                   </button>
                 ))}
               </div>
@@ -446,7 +446,7 @@ const BiddingDetail = () => {
 
             {/* Bottom insight banner */}
             <div className="mt-2 bg-success/10 border border-success/20 rounded-lg px-4 py-2.5 flex items-center gap-2">
-              <span className="text-success text-sm">💡</span>
+              <Sparkles className="w-4 h-4 text-success" />
               <p className="text-xs font-semibold text-success">Waiting may cost more than bidding today.</p>
             </div>
           </div>
@@ -516,7 +516,7 @@ const BiddingDetail = () => {
                 <div className="bg-primary/5 border-2 border-primary/20 rounded-xl p-5 text-center">
                   <p className="text-[10px] text-primary font-bold uppercase tracking-wider mb-1">Bid Submitted</p>
                   <p className="text-3xl font-bold text-foreground">${placedAmount.toLocaleString()}</p>
-                  <p className="text-[11px] text-muted-foreground mt-2">⏳ Waiting for auction result...</p>
+                  <p className="text-[11px] text-muted-foreground mt-2"><Clock className="w-3 h-3 inline mr-1" />Waiting for auction result...</p>
                   <p className="text-[9px] text-muted-foreground mt-1">Queue Position: #7 of 24</p>
                 </div>
                 <button onClick={handleModifyBid} className="w-full py-2.5 border-2 border-warning/30 text-warning font-semibold rounded-lg hover:bg-warning/5 transition-colors text-xs">

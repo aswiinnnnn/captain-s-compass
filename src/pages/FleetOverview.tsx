@@ -58,11 +58,11 @@ const FleetOverview = () => {
     {
       id: '1',
       role: 'ai',
-      content: `🚨 **Fleet Alert** — You have **${severeCount} high-severity cases** requiring immediate attention.\n\n` +
+      content: `**Fleet Alert** — You have **${severeCount} high-severity cases** requiring immediate attention.\n\n` +
         `- **${criticalCount} Critical** vessels with 48h+ delays\n` +
         `- **${highCount} High risk** vessels on elevated alert\n` +
         `- **${charteredAtRisk} chartered vessels** at risk (costing you charter fees while delayed)\n\n` +
-        `The red markers on your map indicate the most urgent cases. Click the ⚠️ warning icon on any vessel to get my risk analysis and recommended actions.\n\n` +
+        `The red markers on your map indicate the most urgent cases. Click the warning icon on any vessel to get my risk analysis and recommended actions.\n\n` +
         `**Priority:** I recommend starting with chartered vessels — they're burning money while idle.`,
       timestamp: new Date(),
     },
@@ -73,12 +73,12 @@ const FleetOverview = () => {
 
   useEffect(() => {
     const stored = localStorage.getItem('voyageguard_captain');
-    if (!stored) { navigate('/'); return; }
+    if (!stored) { navigate('/login'); return; }
   }, [navigate]);
 
   const logout = () => {
     localStorage.removeItem('voyageguard_captain');
-    navigate('/');
+    navigate('/login');
   };
 
   useEffect(() => {
@@ -110,17 +110,17 @@ const FleetOverview = () => {
     setMessages(prev => [...prev, userMsg]);
 
     const factors = vessel.delayFactors;
-    let analysis = `## ⚠️ ${vessel.name} — Risk Analysis\n\n`;
+    let analysis = `## ${vessel.name} — Risk Analysis\n\n`;
     analysis += `**Risk Score:** ${vessel.riskScore}/100 (${vessel.riskLevel})\n`;
     analysis += `**Delay:** +${vessel.delayHours}h | **Exposure:** $${vessel.financialExposure.toLocaleString()}\n`;
     if (vessel.chartered) {
-      analysis += `**⚡ CHARTERED** — Charter rate: $${vessel.charterRate?.toLocaleString()}/day (bleeding money while delayed)\n`;
+      analysis += `**CHARTERED** — Charter rate: $${vessel.charterRate?.toLocaleString()}/day (bleeding money while delayed)\n`;
     }
     analysis += `\n### Risk Factors Detected:\n\n`;
 
     factors.forEach((f, i) => {
-      const icon = f.category === 'weather' ? '🌊' : f.category === 'political' ? '🔴' : f.category === 'port' ? '🏗️' : f.category === 'customs' ? '📋' : f.category === 'client' ? '👤' : f.category === 'mechanical' ? '🔧' : '⏳';
-      analysis += `${i + 1}. ${icon} **${f.name}** — ${f.hours}h delay\n   ${f.detail}\n\n`;
+      const label = f.category === 'weather' ? '[Weather]' : f.category === 'political' ? '[Political]' : f.category === 'port' ? '[Port]' : f.category === 'customs' ? '[Customs]' : f.category === 'client' ? '[Client]' : f.category === 'mechanical' ? '[Mechanical]' : '[Delay]';
+      analysis += `${i + 1}. ${label} **${f.name}** — ${f.hours}h delay\n   ${f.detail}\n\n`;
     });
 
     analysis += `\nHere are my **recommended actions** — click any option to understand the reasoning:`;
@@ -157,9 +157,9 @@ const FleetOverview = () => {
       const critical = fleetVessels.filter(v => v.riskLevel === 'Critical');
       response = `**${critical.length} vessels** are in critical status:\n\n` +
         critical.map(v => `- **${v.name}** — Risk ${v.riskScore}/100, +${v.delayHours}h, $${v.financialExposure.toLocaleString()} exposure`).join('\n') +
-        `\n\nClick the ⚠️ icon on their map markers for detailed analysis.`;
+        `\n\nClick the warning icon on their map markers for detailed analysis.`;
     } else {
-      response = `I'm monitoring **${fleetVessels.length} vessels** across global routes. ${severeCount} need immediate attention.\n\nYou can:\n- Click ⚠️ on any vessel marker for risk analysis\n- Ask me about specific vessels or risk categories\n- Say "show chartered vessels" for cost prioritization`;
+      response = `I'm monitoring **${fleetVessels.length} vessels** across global routes. ${severeCount} need immediate attention.\n\nYou can:\n- Click the warning icon on any vessel marker for risk analysis\n- Ask me about specific vessels or risk categories\n- Say "show chartered vessels" for cost prioritization`;
     }
     addAIMessage(response);
   };
@@ -268,9 +268,8 @@ const FleetOverview = () => {
           </div>
           <nav className="hidden md:flex items-center gap-1">
             <NavTab active onClick={() => navigate('/fleet')}>Fleet Overview</NavTab>
-            <NavTab onClick={() => navigate('/dashboard')}>Dashboard</NavTab>
+            <NavTab onClick={() => navigate('/dashboard')}>Bidding Hub</NavTab>
             <NavTab onClick={() => navigate('/voyage-planner')}>Voyage Planner</NavTab>
-            <NavTab>Fleet Analytics</NavTab>
           </nav>
         </div>
         <div className="flex items-center gap-3">
@@ -307,7 +306,7 @@ const FleetOverview = () => {
                 <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-destructive" /> Critical</span>
               </div>
               <div className="mt-2 pt-2 border-t border-border text-[10px] text-muted-foreground flex items-center gap-1.5">
-                <AlertTriangle className="w-3 h-3 text-destructive" /> Click ⚠️ on vessels for AI risk analysis
+                <AlertTriangle className="w-3 h-3 text-destructive" /> Click warning icon on vessels for AI risk analysis
               </div>
             </div>
 
@@ -500,9 +499,9 @@ const FleetOverview = () => {
                               <div className="flex gap-2 mt-2">
                                 <button
                                   onClick={() => navigate(`/risk/${msg.vesselContext!.id}`)}
-                                  className="flex-1 py-1.5 text-[10px] font-bold rounded-md bg-background/50 hover:bg-background/80 transition-colors text-center"
+                                  className="flex-1 py-1.5 text-[10px] font-bold rounded-md bg-background/50 hover:bg-background/80 transition-colors text-center flex items-center justify-center gap-1"
                                 >
-                                  🛡️ Full Risk Analysis
+                                  <Shield className="w-3 h-3" /> Full Risk Analysis
                                 </button>
                                 <button
                                   onClick={() => handleExploreVoyage(msg.vesselContext!)}
