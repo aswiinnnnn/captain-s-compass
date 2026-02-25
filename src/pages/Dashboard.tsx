@@ -5,12 +5,13 @@ import VoyageMap from '@/components/VoyageMap';
 import ShipInfoPanel from '@/components/ShipInfoPanel';
 import CanalPortCards from '@/components/CanalPortCards';
 import AIChatbot from '@/components/AIChatbot';
-import { LogOut, Anchor, Bell, Settings, Search } from 'lucide-react';
+import { Anchor, Bell, Settings, Search, TrendingUp, DollarSign, Clock, AlertTriangle } from 'lucide-react';
 import NavTab from '@/components/NavTab';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [captain, setCaptain] = useState<Captain | null>(null);
+  const [time, setTime] = useState(new Date());
 
   useEffect(() => {
     const stored = localStorage.getItem('voyageguard_captain');
@@ -20,6 +21,12 @@ const Dashboard = () => {
     }
     setCaptain(JSON.parse(stored));
   }, [navigate]);
+
+  // Live clock
+  useEffect(() => {
+    const interval = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const logout = () => {
     localStorage.removeItem('voyageguard_captain');
@@ -34,7 +41,9 @@ const Dashboard = () => {
       <header className="h-14 border-b border-border flex items-center justify-between px-6 bg-card shrink-0">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
-            <Anchor className="w-5 h-5 text-primary" />
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+              <Anchor className="w-4 h-4 text-primary-foreground" />
+            </div>
             <span className="font-bold text-foreground text-base">Captain Voyage</span>
           </div>
           <nav className="hidden md:flex items-center gap-1">
@@ -47,17 +56,20 @@ const Dashboard = () => {
         <div className="flex items-center gap-3">
           <div className="hidden sm:flex items-center gap-2 bg-muted rounded-lg px-3 py-1.5">
             <Search className="w-3.5 h-3.5 text-muted-foreground" />
-            <input placeholder="Search ports, vessels..." className="bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none w-36" />
+            <input placeholder="Search ports, vessels..." className="bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none w-40" />
           </div>
           <button className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground relative">
             <Bell className="w-4 h-4" />
+            <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-destructive rounded-full text-[7px] text-destructive-foreground flex items-center justify-center font-bold">3</span>
           </button>
           <button className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
             <Settings className="w-4 h-4" />
           </button>
-          <button onClick={logout} className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
-            {captain.name.charAt(captain.name.indexOf(' ') + 1)}
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={logout} className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shadow-sm">
+              {captain.name.charAt(captain.name.indexOf(' ') + 1)}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -82,15 +94,16 @@ const Dashboard = () => {
       {/* Status Bar */}
       <footer className="h-8 border-t border-border flex items-center justify-between px-6 bg-card text-[10px] shrink-0">
         <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1 text-success font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-success" />
+          <span className="flex items-center gap-1 text-success font-bold">
+            <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
             SAT CONNECTION: STABLE (84MS)
           </span>
-          <span className="text-muted-foreground">📍 LAT: 29.93° N | LON: 32.55° E</span>
+          <span className="text-muted-foreground">📍 LAT: {captain.position.lat.toFixed(2)}° N | LON: {captain.position.lng.toFixed(2)}° E</span>
+          <span className="text-muted-foreground">Voyage: {captain.voyageId}</span>
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-muted-foreground">SERVER TIME: 08:22:45 UTC</span>
-          <span className="text-success font-medium">SYSTEM STATUS: ALL GREEN</span>
+          <span className="text-muted-foreground font-mono">SERVER TIME: {time.toUTCString().slice(17, 25)} UTC</span>
+          <span className="text-success font-bold">SYSTEM STATUS: ALL GREEN</span>
         </div>
       </footer>
     </div>
