@@ -34,7 +34,7 @@ const AIChatbot = ({ canalName, bidAmount }: AIChatbotProps) => {
   ];
 
   return (
-    <div className="flex flex-col h-full bg-chat-bg rounded-xl border border-border overflow-hidden">
+    <div className="flex flex-col h-full max-h-full bg-chat-bg border border-border overflow-hidden">
       {/* Header */}
       <div className="px-4 py-3 border-b border-border flex items-center justify-between bg-card">
         <div className="flex items-center gap-2">
