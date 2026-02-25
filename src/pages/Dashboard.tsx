@@ -43,7 +43,7 @@ const Dashboard = () => {
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
               <Anchor className="w-4 h-4 text-primary-foreground" />
             </div>
-            <span className="font-bold text-foreground text-base">Captain Voyage</span>
+            <span className="font-bold text-foreground text-base">AquaMinds</span>
           </div>
           <nav className="hidden md:flex items-center gap-1">
             <NavTab onClick={() => navigate('/fleet')}>Fleet Overview</NavTab>
