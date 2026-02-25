@@ -14,7 +14,7 @@ const Login = () => {
     const captain = captains.find(c => c.email === email && c.password === password);
     if (captain) {
       localStorage.setItem('voyageguard_captain', JSON.stringify(captain));
-      navigate('/dashboard');
+      navigate('/fleet');
     } else {
       setError('Invalid credentials. Use a demo account below.');
     }
@@ -22,7 +22,7 @@ const Login = () => {
 
   const loginAs = (captain: typeof captains[0]) => {
     localStorage.setItem('voyageguard_captain', JSON.stringify(captain));
-    navigate('/dashboard');
+    navigate('/fleet');
   };
 
   return (

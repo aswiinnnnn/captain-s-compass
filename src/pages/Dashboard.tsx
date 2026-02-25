@@ -46,8 +46,8 @@ const Dashboard = () => {
             <span className="font-bold text-foreground text-base">Captain Voyage</span>
           </div>
           <nav className="hidden md:flex items-center gap-1">
+            <NavTab onClick={() => navigate('/fleet')}>Fleet Overview</NavTab>
             <NavTab active>Dashboard</NavTab>
-            <NavTab>Voyages</NavTab>
             <NavTab>Bidding Hub</NavTab>
             <NavTab>Fleet Analytics</NavTab>
           </nav>
