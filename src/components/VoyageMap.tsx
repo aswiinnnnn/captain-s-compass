@@ -80,7 +80,7 @@ const VoyageMap = ({ shipPosition, onCanalClick }: VoyageMapProps) => {
       .addTo(map)
       .bindTooltip(
         `<div style="min-width:200px;">
-          <div style="font-weight:700; font-size:12px; margin-bottom:6px; color:#1e293b;">🚢 MV Atlantic Star</div>
+          <div style="font-weight:700; font-size:12px; margin-bottom:6px; color:#1e293b;">MV Atlantic Star</div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; font-size:10px;">
             <div style="color:#64748b;">Speed</div><div style="font-weight:600; color:#1e293b;">18.4 knots</div>
             <div style="color:#64748b;">Heading</div><div style="font-weight:600; color:#1e293b;">092° ESE</div>
@@ -90,7 +90,7 @@ const VoyageMap = ({ shipPosition, onCanalClick }: VoyageMapProps) => {
             <div style="color:#64748b;">IMO</div><div style="font-weight:600; color:#1e293b;">9832741</div>
           </div>
           <div style="margin-top:6px; padding-top:4px; border-top:1px solid #e2e8f0; font-size:9px; color:#64748b;">
-            📍 ${lat.toFixed(2)}°N, ${lng.toFixed(2)}°E · Voyage VYG-2025-0847
+            ${lat.toFixed(2)}°N, ${lng.toFixed(2)}°E · Voyage VYG-2025-0847
           </div>
         </div>`,
         {
@@ -128,11 +128,11 @@ const VoyageMap = ({ shipPosition, onCanalClick }: VoyageMapProps) => {
               <span style="background:${color}20; color:${color}; padding:1px 6px; border-radius:4px; font-size:9px; font-weight:600;">${cp.type.toUpperCase()}</span>
               <span style="background:${color}20; color:${color}; padding:1px 6px; border-radius:4px; font-size:9px; font-weight:600;">${cp.congestionStatus} Traffic</span>
             </div>
-            <div style="font-size:10px; color:#475569; margin-bottom:2px;">📅 Expected: <b>${etaDate}</b></div>
-            <div style="font-size:10px; color:#475569; margin-bottom:2px;">⏱ ETA: <b>${cp.eta}</b> | Dist: <b>${cp.distance}</b></div>
-            <div style="font-size:10px; color:#475569; margin-bottom:2px;">🚢 Queue: <b>${cp.queueLength} vessels</b></div>
-            <div style="font-size:10px; color:#475569;">🔒 Security: <b>${cp.securityLevel}</b></div>
-            ${cp.requiresBidding ? '<div style="font-size:9px; color:#2563eb; font-weight:600; margin-top:4px;">💰 Bidding: $' + (cp.currentBidRange.min/1000).toFixed(0) + 'k - $' + (cp.currentBidRange.max/1000).toFixed(0) + 'k</div>' : ''}
+            <div style="font-size:10px; color:#475569; margin-bottom:2px;">Expected: <b>${etaDate}</b></div>
+            <div style="font-size:10px; color:#475569; margin-bottom:2px;">ETA: <b>${cp.eta}</b> | Dist: <b>${cp.distance}</b></div>
+            <div style="font-size:10px; color:#475569; margin-bottom:2px;">Queue: <b>${cp.queueLength} vessels</b></div>
+            <div style="font-size:10px; color:#475569;">Security: <b>${cp.securityLevel}</b></div>
+            ${cp.requiresBidding ? '<div style="font-size:9px; color:#2563eb; font-weight:600; margin-top:4px;">Bidding: $' + (cp.currentBidRange.min/1000).toFixed(0) + 'k - $' + (cp.currentBidRange.max/1000).toFixed(0) + 'k</div>' : ''}
           </div>`,
           {
             direction: 'top',

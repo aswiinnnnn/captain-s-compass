@@ -80,12 +80,12 @@ const VoyagePlanner = () => {
 
   useEffect(() => {
     const stored = localStorage.getItem('voyageguard_captain');
-    if (!stored) { navigate('/'); return; }
+    if (!stored) { navigate('/login'); return; }
   }, [navigate]);
 
   const logout = () => {
     localStorage.removeItem('voyageguard_captain');
-    navigate('/');
+    navigate('/login');
   };
 
   // Map setup
@@ -222,9 +222,8 @@ const VoyagePlanner = () => {
           </div>
           <nav className="hidden md:flex items-center gap-1">
             <NavTab onClick={() => navigate('/fleet')}>Fleet Overview</NavTab>
-            <NavTab onClick={() => navigate('/dashboard')}>Dashboard</NavTab>
+            <NavTab onClick={() => navigate('/dashboard')}>Bidding Hub</NavTab>
             <NavTab active>Voyage Planner</NavTab>
-            <NavTab>Fleet Analytics</NavTab>
           </nav>
         </div>
         <div className="flex items-center gap-3">
@@ -289,7 +288,7 @@ const VoyagePlanner = () => {
                   { label: 'AIS Tracks', active: false, toggle: () => {} },
                 ].map(l => (
                   <button key={l.label} onClick={l.toggle} className={`w-full text-left px-2 py-1 text-[10px] rounded transition-colors ${l.active ? 'bg-primary/10 text-primary font-semibold' : 'text-foreground hover:bg-muted'}`}>
-                    {l.active ? '☑' : '☐'} {l.label}
+                    {l.active ? <Check className="w-3 h-3 inline mr-1" /> : <X className="w-3 h-3 inline mr-1 opacity-30" />} {l.label}
                   </button>
                 ))}
               </div>

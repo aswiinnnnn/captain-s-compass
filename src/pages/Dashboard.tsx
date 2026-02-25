@@ -5,7 +5,7 @@ import VoyageMap from '@/components/VoyageMap';
 import ShipInfoPanel from '@/components/ShipInfoPanel';
 import CanalPortCards from '@/components/CanalPortCards';
 import AIChatbot from '@/components/AIChatbot';
-import { Anchor, Bell, Settings, Search } from 'lucide-react';
+import { Anchor, Bell, Settings, Search, MapPin } from 'lucide-react';
 import NavTab from '@/components/NavTab';
 
 const Dashboard = () => {
@@ -16,7 +16,7 @@ const Dashboard = () => {
   useEffect(() => {
     const stored = localStorage.getItem('voyageguard_captain');
     if (!stored) {
-      navigate('/');
+      navigate('/login');
       return;
     }
     setCaptain(JSON.parse(stored));
@@ -29,7 +29,7 @@ const Dashboard = () => {
 
   const logout = () => {
     localStorage.removeItem('voyageguard_captain');
-    navigate('/');
+    navigate('/login');
   };
 
   if (!captain) return null;
@@ -47,9 +47,8 @@ const Dashboard = () => {
           </div>
           <nav className="hidden md:flex items-center gap-1">
             <NavTab onClick={() => navigate('/fleet')}>Fleet Overview</NavTab>
-            <NavTab active>Dashboard</NavTab>
+            <NavTab active>Bidding Hub</NavTab>
             <NavTab onClick={() => navigate('/voyage-planner')}>Voyage Planner</NavTab>
-            <NavTab>Fleet Analytics</NavTab>
           </nav>
         </div>
         <div className="flex items-center gap-3">
@@ -96,7 +95,7 @@ const Dashboard = () => {
             <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
             SAT CONNECTION: STABLE (84MS)
           </span>
-          <span className="text-muted-foreground">📍 LAT: {(captain.position.lat ?? 0).toFixed(2)}° N | LON: {(captain.position.lng ?? 0).toFixed(2)}° E</span>
+          <span className="text-muted-foreground"><MapPin className="w-3 h-3 inline mr-1" />LAT: {(captain.position.lat ?? 0).toFixed(2)}° N | LON: {(captain.position.lng ?? 0).toFixed(2)}° E</span>
           <span className="text-muted-foreground">Voyage: {captain.voyageId}</span>
         </div>
         <div className="flex items-center gap-4">

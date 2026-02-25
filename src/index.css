@@ -15,16 +15,16 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 20% 15%;
 
-    --primary: 224 76% 48%;
+    --primary: 228 65% 14%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 220 15% 40%;
+    --secondary: 224 76% 48%;
+    --secondary-foreground: 0 0% 100%;
 
     --muted: 220 14% 96%;
     --muted-foreground: 220 10% 55%;
 
-    --accent: 224 76% 48%;
+    --accent: 228 65% 14%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
@@ -38,21 +38,21 @@
 
     --border: 220 13% 90%;
     --input: 220 13% 90%;
-    --ring: 224 76% 48%;
+    --ring: 228 65% 14%;
 
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 220 15% 40%;
-    --sidebar-primary: 224 76% 48%;
+    --sidebar-primary: 228 65% 14%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 220 14% 96%;
     --sidebar-accent-foreground: 220 15% 40%;
     --sidebar-border: 220 13% 90%;
-    --sidebar-ring: 224 76% 48%;
+    --sidebar-ring: 228 65% 14%;
 
     --chat-bg: 220 14% 97%;
-    --chat-user: 224 76% 48%;
+    --chat-user: 228 65% 14%;
     --chat-ai: 0 0% 100%;
     --bid-low: 0 72% 51%;
     --bid-optimal: 152 69% 41%;
@@ -81,7 +81,7 @@
   }
 
   .glow-primary {
-    box-shadow: 0 0 20px hsl(224 76% 48% / 0.08);
+    box-shadow: 0 0 20px hsl(228 65% 14% / 0.08);
   }
 
   .glow-success {
