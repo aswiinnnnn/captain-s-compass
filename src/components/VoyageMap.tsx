@@ -65,14 +65,41 @@ const VoyageMap = ({ shipPosition, onCanalClick }: VoyageMapProps) => {
       iconAnchor: [18, 18],
     });
 
+    // Permanent name label
+    L.marker([lat, lng], {
+      icon: L.divIcon({
+        className: 'ship-name-label',
+        html: `<div style="background:white; border:1px solid #e2e8f0; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:700; color:#1e293b; white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,0.1);">MV Atlantic Star</div>`,
+        iconSize: [100, 16],
+        iconAnchor: [50, -16],
+      }),
+    }).addTo(map);
+
+    // Ship marker with detailed hover tooltip
     L.marker([lat, lng], { icon: shipIcon })
       .addTo(map)
-      .bindTooltip('MV Atlantic Star', {
-        permanent: true,
-        direction: 'bottom',
-        offset: [0, 16],
-        className: 'ship-tooltip',
-      });
+      .bindTooltip(
+        `<div style="min-width:200px;">
+          <div style="font-weight:700; font-size:12px; margin-bottom:6px; color:#1e293b;">🚢 MV Atlantic Star</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; font-size:10px;">
+            <div style="color:#64748b;">Speed</div><div style="font-weight:600; color:#1e293b;">18.4 knots</div>
+            <div style="color:#64748b;">Heading</div><div style="font-weight:600; color:#1e293b;">092° ESE</div>
+            <div style="color:#64748b;">Draft</div><div style="font-weight:600; color:#1e293b;">12.8m</div>
+            <div style="color:#64748b;">Fuel</div><div style="font-weight:600; color:#22c55e;">68%</div>
+            <div style="color:#64748b;">Cargo</div><div style="font-weight:600; color:#1e293b;">4,200 TEU</div>
+            <div style="color:#64748b;">IMO</div><div style="font-weight:600; color:#1e293b;">9832741</div>
+          </div>
+          <div style="margin-top:6px; padding-top:4px; border-top:1px solid #e2e8f0; font-size:9px; color:#64748b;">
+            📍 ${lat.toFixed(2)}°N, ${lng.toFixed(2)}°E · Voyage VYG-2025-0847
+          </div>
+        </div>`,
+        {
+          direction: 'top',
+          offset: [0, -18],
+          className: 'ship-detail-tooltip',
+          sticky: false,
+        }
+      );
 
     // Canal/Port markers with ETA details
     canalsPorts.forEach(cp => {
@@ -156,6 +183,17 @@ const VoyageMap = ({ shipPosition, onCanalClick }: VoyageMapProps) => {
           box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
         }
         .ship-tooltip::before { display: none !important; }
+        .ship-detail-tooltip {
+          background: white !important;
+          border: 1px solid #e2e8f0 !important;
+          border-radius: 10px !important;
+          padding: 10px 14px !important;
+          font-size: 11px !important;
+          color: #475569 !important;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
+          max-width: 280px !important;
+        }
+        .ship-detail-tooltip::before { display: none !important; }
         .canal-tooltip-detailed {
           background: white !important;
           border: 1px solid #e2e8f0 !important;
