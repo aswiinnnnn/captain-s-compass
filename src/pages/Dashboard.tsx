@@ -98,7 +98,7 @@ const Dashboard = () => {
             <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
             SAT CONNECTION: STABLE (84MS)
           </span>
-          <span className="text-muted-foreground">📍 LAT: {captain.position.lat.toFixed(2)}° N | LON: {captain.position.lng.toFixed(2)}° E</span>
+          <span className="text-muted-foreground">📍 LAT: {(captain.position.lat ?? 0).toFixed(2)}° N | LON: {(captain.position.lng ?? 0).toFixed(2)}° E</span>
           <span className="text-muted-foreground">Voyage: {captain.voyageId}</span>
         </div>
         <div className="flex items-center gap-4">
