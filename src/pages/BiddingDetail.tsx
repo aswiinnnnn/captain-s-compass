@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { canalsPorts, previousBids, bidFactors, probabilityData } from '@/data/mockData';
+import { canalsPorts, previousBids, bidFactors } from '@/data/mockData';
 import AIChatbot from '@/components/AIChatbot';
 import { useChatContext } from '@/contexts/ChatContext';
-import { Download, Zap, ChevronRight, Send, ArrowUp, ArrowDown, Minus, TrendingUp, Shield, AlertTriangle, Clock, Users, Fuel, Anchor, Bot, Timer, Ship, TriangleAlert, DollarSign, CalendarClock, Sparkles } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, ReferenceLine, ReferenceArea } from 'recharts';
+import { Download, Zap, ChevronRight, ArrowUp, ArrowDown, Minus, TrendingUp, AlertTriangle, Clock, Users, Anchor, Timer, TriangleAlert, DollarSign, Sparkles } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea } from 'recharts';
 
-const AI_SUGGESTED_BID = 44800;
+
 
 // Daily data with predictions
 const generateDailyData = () => {
@@ -52,10 +52,8 @@ const BiddingDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const canal = canalsPorts.find(c => c.id === id);
-  const [bidAmount, setBidAmount] = useState(45500);
+  const [bidAmount] = useState(45500);
   const { sendMessage } = useChatContext();
-  const [bidPlaced, setBidPlaced] = useState(false);
-  const [placedAmount, setPlacedAmount] = useState(0);
   const [predictionModel, setPredictionModel] = useState<PredictionModel>('ai');
   const [dailyData] = useState(generateDailyData);
 
@@ -113,17 +111,6 @@ const BiddingDetail = () => {
     return `${h}h ${m.toString().padStart(2,'0')}m ${sec.toString().padStart(2,'0')}s`;
   };
 
-  // Available slots
-  const availableSlots = [
-    { time: '06:00 UTC', status: 'taken' },
-    { time: '08:00 UTC', status: 'available' },
-    { time: '10:00 UTC', status: 'taken' },
-    { time: '12:00 UTC', status: 'available' },
-    { time: '14:00 UTC', status: 'available' },
-    { time: '16:00 UTC', status: 'taken' },
-    { time: '18:00 UTC', status: 'taken' },
-    { time: '20:00 UTC', status: 'available' },
-  ];
 
   useEffect(() => {
     const stored = localStorage.getItem('voyageguard_captain');
@@ -135,35 +122,6 @@ const BiddingDetail = () => {
     return null;
   }
 
-  const getBidFeedback = () => {
-    if (bidAmount < 40000) return { text: 'Low Chance', color: 'text-destructive', percent: Math.round((bidAmount / 60000) * 65) };
-    if (bidAmount <= 50000) return { text: 'Optimal Range', color: 'text-success', percent: Math.round(68 + ((bidAmount - 40000) / 10000) * 24) };
-    return { text: 'High Cost', color: 'text-warning', percent: Math.min(99, Math.round(92 + ((bidAmount - 50000) / 10000) * 7)) };
-  };
-
-  const feedback = getBidFeedback();
-  const urgencyPercent = Math.min(100, Math.round((bidAmount / 60000) * 100));
-  const aiSuggestedPercent = ((AI_SUGGESTED_BID - canal.currentBidRange.min) / (canal.currentBidRange.max - canal.currentBidRange.min)) * 100;
-
-  const handleAskAI = () => {
-    sendMessage(`Should I bid $${bidAmount.toLocaleString()} for ${canal.name} transit? Analyze this amount and tell me if it's a good strategy.`, { canalName: canal.name, bidAmount });
-  };
-
-  const handleSubmitBid = () => {
-    setBidPlaced(true);
-    setPlacedAmount(bidAmount);
-    sendMessage(`I just placed a bid of $${bidAmount.toLocaleString()} for ${canal.name}. Waiting for auction result.`, { canalName: canal.name, bidAmount });
-  };
-
-  const handleModifyBid = () => {
-    setBidPlaced(false);
-  };
-
-  const handleBidFromChart = (value: number) => {
-    setBidAmount(Math.round(value * 1000));
-    setBidPlaced(false);
-  };
-
   const togglePredictionModel = (m: PredictionModel) => {
     setPredictionModel(prev => prev === m ? null : m);
   };
@@ -174,7 +132,7 @@ const BiddingDetail = () => {
     const val = payload[dataKey];
     if (val === undefined) return null;
     return (
-      <g className="cursor-pointer" onClick={() => handleBidFromChart(val)}>
+      <g>
         <circle cx={cx} cy={cy} r={5} fill="hsl(224, 76%, 48%)" stroke="white" strokeWidth={2} />
       </g>
     );
@@ -216,7 +174,7 @@ const BiddingDetail = () => {
 
       <div className="flex flex-1 min-h-0">
         {/* LEFT - Scrollable analytics */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4 min-h-0">
+        <div className="overflow-y-auto p-5 space-y-4 min-h-0" style={{ width: '65%' }}>
           {/* Bidding Trends Chart */}
           <div className="glass-panel rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
@@ -304,41 +262,15 @@ const BiddingDetail = () => {
             <p className="text-[9px] text-muted-foreground mt-2 text-right px-1">Click dots on predicted line to set bid value</p>
           </div>
 
-          {/* Bid Success Probability */}
-          <div className="glass-panel rounded-xl p-4">
-            <h2 className="text-sm font-bold text-foreground mb-2">Bid Success Probability</h2>
-            <div className="h-[160px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={probabilityData}>
-                  <defs>
-                    <linearGradient id="probGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(224, 76%, 48%)" stopOpacity={0.2} />
-                      <stop offset="100%" stopColor="hsl(224, 76%, 48%)" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 13%, 91%)" />
-                  <XAxis dataKey="bid" tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} stroke="hsl(220, 10%, 55%)" fontSize={10} />
-                  <YAxis tickFormatter={v => `${v}%`} stroke="hsl(220, 10%, 55%)" fontSize={10} />
-                  <Tooltip contentStyle={{ background: 'hsl(0, 0%, 100%)', border: '1px solid hsl(220, 13%, 90%)', borderRadius: '8px', fontSize: '11px' }} labelFormatter={v => `Bid: $${Number(v).toLocaleString()}`} formatter={(v: number) => [`${v}%`, 'Win Rate']} />
-                  <ReferenceLine x={bidAmount} stroke="hsl(224, 76%, 48%)" strokeWidth={2} strokeDasharray="4 4" label={{ value: 'Your Bid', position: 'top', fill: 'hsl(224, 76%, 48%)', fontSize: 9 }} />
-                  <ReferenceLine x={AI_SUGGESTED_BID} stroke="hsl(152, 69%, 41%)" strokeDasharray="4 4" label={{ value: 'AI Suggested', position: 'top', fill: 'hsl(152, 69%, 41%)', fontSize: 9 }} />
-                  <Area type="monotone" dataKey="probability" stroke="hsl(224, 76%, 48%)" fill="url(#probGrad)" strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
           {/* Harbor Logistics & Metrics */}
           <div>
             <h3 className="text-xs font-bold text-foreground uppercase tracking-wider mb-2">Harbor Logistics & Metrics</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               {[
                 { label: 'QUEUE LENGTH', value: String(canal.queueLength), sub: 'vessels', icon: Users, accent: 'text-primary' },
                 { label: 'AVG WAITING', value: '18h', sub: '+2h vs. normal', icon: Clock, accent: 'text-warning' },
                 { label: 'WATER LEVEL', value: '+0.5m', sub: 'Optimal Draft', icon: TrendingUp, accent: 'text-success' },
                 { label: 'DEMURRAGE', value: '$850', sub: '/hr Standard', icon: AlertTriangle, accent: 'text-muted-foreground' },
-                { label: 'BID CEILING', value: `$${(canal.currentBidRange.max / 1000).toFixed(0)}k`, sub: 'Hard Limit', icon: Shield, accent: 'text-destructive' },
-                { label: 'FUEL COST', value: '$12.4k', sub: 'Est. Transit Fuel', icon: Fuel, accent: 'text-primary' },
               ].map(m => (
                 <div key={m.label} className="glass-panel rounded-xl p-2.5">
                   <div className="flex items-center justify-between mb-0.5">
@@ -347,30 +279,6 @@ const BiddingDetail = () => {
                   </div>
                   <p className="text-xl font-bold text-foreground">{m.value}</p>
                   <p className={`text-[9px] ${m.accent}`}>{m.sub}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Available Transit Slots */}
-          <div className="glass-panel rounded-xl p-4">
-            <h2 className="text-sm font-bold text-foreground mb-2 flex items-center gap-2">
-              <CalendarClock className="w-4 h-4 text-primary" /> Available Transit Slots
-            </h2>
-            <div className="grid grid-cols-4 gap-2">
-              {availableSlots.map(slot => (
-                <div
-                  key={slot.time}
-                  className={`rounded-lg p-2 text-center text-xs font-semibold border transition-all ${
-                    slot.status === 'available'
-                      ? 'bg-success/10 border-success/30 text-success cursor-pointer hover:bg-success/20 ring-1 ring-success/20'
-                      : 'bg-muted/50 border-border text-muted-foreground line-through opacity-60'
-                  }`}
-                >
-                  {slot.time}
-                  <div className="text-[8px] font-bold uppercase mt-0.5">
-                    {slot.status === 'available' ? '● OPEN' : 'TAKEN'}
-                  </div>
                 </div>
               ))}
             </div>
@@ -506,117 +414,8 @@ const BiddingDetail = () => {
           </div>
         </div>
 
-        {/* MIDDLE - Place Bid (fixed, non-scrollable) */}
-        <div className="hidden lg:flex w-[300px] border-l border-border flex-col h-full overflow-hidden shrink-0 bg-card">
-          <div className="p-5 flex-1 flex flex-col">
-            <h2 className="text-lg font-bold text-foreground text-center mb-4">Place Live Bid</h2>
-
-            {bidPlaced ? (
-              <div className="space-y-4 flex-1 flex flex-col">
-                <div className="bg-primary/5 border-2 border-primary/20 rounded-xl p-5 text-center">
-                  <p className="text-[10px] text-primary font-bold uppercase tracking-wider mb-1">Bid Submitted</p>
-                  <p className="text-3xl font-bold text-foreground">${placedAmount.toLocaleString()}</p>
-                  <p className="text-[11px] text-muted-foreground mt-2"><Clock className="w-3 h-3 inline mr-1" />Waiting for auction result...</p>
-                  <p className="text-[9px] text-muted-foreground mt-1">Queue Position: #7 of 24</p>
-                </div>
-                <button onClick={handleModifyBid} className="w-full py-2.5 border-2 border-warning/30 text-warning font-semibold rounded-lg hover:bg-warning/5 transition-colors text-xs">
-                  Modify Bid & Resubmit
-                </button>
-                <div className="mt-auto" />
-              </div>
-            ) : (
-              <div className="flex-1 flex flex-col">
-                {/* Urgency Gauge - centered */}
-                <div className="flex flex-col items-center mb-4">
-                  <div className="relative w-28 h-14">
-                    <svg viewBox="0 0 120 60" className="w-full h-full">
-                      <path d="M10,55 A50,50 0 0,1 110,55" fill="none" stroke="hsl(var(--muted))" strokeWidth="10" strokeLinecap="round" />
-                      <path d="M10,55 A50,50 0 0,1 110,55" fill="none" stroke={urgencyPercent > 70 ? 'hsl(var(--destructive))' : urgencyPercent > 40 ? 'hsl(38, 92%, 50%)' : 'hsl(var(--success))'} strokeWidth="10" strokeLinecap="round" strokeDasharray={`${urgencyPercent * 1.57} 157`} />
-                    </svg>
-                  </div>
-                  <p className={`text-[10px] font-bold uppercase mt-1 ${urgencyPercent > 70 ? 'text-destructive' : urgencyPercent > 40 ? 'text-warning' : 'text-success'}`}>
-                    {urgencyPercent > 70 ? 'HIGH' : urgencyPercent > 40 ? 'MEDIUM' : 'LOW'} URGENCY
-                  </p>
-                </div>
-
-                {/* Bid Amount */}
-                <div className="text-center mb-1">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Bid Amount</p>
-                  <p className="text-4xl font-extrabold text-foreground tracking-tight">${bidAmount.toLocaleString()}</p>
-                </div>
-
-                {/* AI suggested label */}
-                <div className="flex justify-center mb-3">
-                  <div className="flex flex-col items-center">
-                    <span className="text-[10px] text-success font-semibold">AI: ${(AI_SUGGESTED_BID / 1000).toFixed(1)}k</span>
-                    <span className="text-success text-sm leading-none">▼</span>
-                  </div>
-                </div>
-
-                {/* Gradient slider */}
-                <div className="relative mb-2 px-1">
-                  {/* AI marker on bar */}
-                  <div className="absolute -top-1 z-10" style={{ left: `${aiSuggestedPercent}%`, transform: 'translateX(-50%)' }}>
-                    <div className="w-0.5 h-8 bg-success rounded-full shadow-[0_0_6px_hsl(152,69%,41%,0.6)]" />
-                  </div>
-                  {/* Gradient track */}
-                  <div className="relative h-3.5 rounded-full overflow-hidden shadow-inner" style={{ background: 'linear-gradient(to right, hsl(152, 69%, 41%), hsl(80, 60%, 50%), hsl(60, 70%, 50%), hsl(38, 92%, 50%), hsl(15, 80%, 50%), hsl(0, 72%, 51%))' }} />
-                  <input
-                    type="range"
-                    min={canal.currentBidRange.min}
-                    max={canal.currentBidRange.max}
-                    step={500}
-                    value={bidAmount}
-                    onChange={e => setBidAmount(Number(e.target.value))}
-                    className="absolute inset-x-0 w-full h-3.5 opacity-0 cursor-pointer z-20"
-                    style={{ top: '0px' }}
-                  />
-                  {/* Thumb indicator */}
-                  <div className="absolute h-5 w-5 rounded-full bg-primary border-2 border-background shadow-lg z-10 -translate-x-1/2 pointer-events-none" style={{ left: `${((bidAmount - canal.currentBidRange.min) / (canal.currentBidRange.max - canal.currentBidRange.min)) * 100}%`, top: '-3px' }} />
-                  <div className="flex justify-between mt-2">
-                    <span className="text-[10px] text-success font-bold">${(canal.currentBidRange.min / 1000).toFixed(0)}k</span>
-                    <span className="text-[10px] text-destructive font-bold">${(canal.currentBidRange.max / 1000).toFixed(0)}k</span>
-                  </div>
-                </div>
-
-                {/* Winning Trend */}
-                <div className="flex items-center justify-between px-3 py-2.5 border border-border rounded-lg mb-2">
-                  <span className="text-xs text-muted-foreground font-medium">WINNING TREND</span>
-                  <span className="text-xs font-bold text-foreground flex items-center gap-1">Upward <TrendingUp className="w-3.5 h-3.5 text-destructive" /></span>
-                </div>
-
-                {/* Optimal Range */}
-                <div className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg mb-4 ${feedback.text === 'Optimal Range' ? 'bg-success/10 border border-success/20' : feedback.text === 'Low Chance' ? 'bg-destructive/10 border border-destructive/20' : 'bg-warning/10 border border-warning/20'}`}>
-                  <div className={`w-5 h-5 rounded flex items-center justify-center ${feedback.text === 'Optimal Range' ? 'bg-success text-background' : feedback.text === 'Low Chance' ? 'bg-destructive text-background' : 'bg-warning text-background'}`}>
-                    <span className="text-xs font-bold">✓</span>
-                  </div>
-                  <div>
-                    <p className={`text-xs font-bold ${feedback.color}`}>{feedback.text}</p>
-                    <p className="text-[10px] text-muted-foreground">{feedback.percent}% chance of winning.</p>
-                  </div>
-                </div>
-
-                {/* Spacer to push buttons to bottom */}
-                <div className="flex-1" />
-
-                {/* Submit Bid */}
-                <button onClick={handleSubmitBid} className="w-full py-3.5 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-md mb-2">
-                  Submit Bid <Send className="w-4 h-4" />
-                </button>
-
-                {/* Ask AI */}
-                <button onClick={handleAskAI} className="w-full py-2.5 border-2 border-primary/20 text-primary font-semibold rounded-xl hover:bg-primary/5 transition-colors text-xs flex items-center justify-center gap-2">
-                  <Bot className="w-3.5 h-3.5" /> Ask AI About This Bid
-                </button>
-
-                <p className="text-[9px] text-muted-foreground text-center mt-2">Reviewed by <span className="text-primary font-medium">AI</span> before final placement</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* RIGHT - AI Chatbot (fixed) */}
-        <div className="hidden lg:flex w-[320px] border-l border-border flex-col h-full overflow-hidden shrink-0">
+        {/* RIGHT - AI Chatbot (35% width) */}
+        <div className="hidden lg:flex border-l border-border flex-col h-full overflow-hidden shrink-0" style={{ width: '35%' }}>
           <AIChatbot canalName={canal.name} bidAmount={bidAmount} />
         </div>
       </div>
