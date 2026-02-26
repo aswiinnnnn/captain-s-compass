@@ -2,13 +2,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ChatProvider } from "@/contexts/ChatContext";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import BiddingDetail from "./pages/BiddingDetail";
 import FleetOverview from "./pages/FleetOverview";
+import BiddingDetail from "./pages/BiddingDetail";
 import RiskAnalysis from "./pages/RiskAnalysis";
 import VoyagePlanner from "./pages/VoyagePlanner";
 import NotFound from "./pages/NotFound";
@@ -26,7 +25,7 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/fleet" element={<FleetOverview />} />
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Navigate to="/fleet" replace />} />
             <Route path="/bidding/:id" element={<BiddingDetail />} />
             <Route path="/risk/:id" element={<RiskAnalysis />} />
             <Route path="/voyage-planner" element={<VoyagePlanner />} />
