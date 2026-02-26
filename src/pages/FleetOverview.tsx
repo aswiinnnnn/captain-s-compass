@@ -3,26 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { fleetVessels, type FleetVessel } from '@/data/fleetData';
-import { Anchor, Bell, Settings, Search, Filter, Download, Ship, X } from 'lucide-react';
+import { Anchor, Bell, Settings, Search, Ship, X } from 'lucide-react';
 import NavTab from '@/components/NavTab';
 
-const riskColor = (level: FleetVessel['riskLevel']) => {
-  switch (level) {
-    case 'Critical': return 'hsl(0, 72%, 51%)';
-    case 'High': return 'hsl(25, 90%, 50%)';
-    case 'Medium': return 'hsl(38, 92%, 50%)';
-    case 'Low': return 'hsl(152, 69%, 41%)';
-  }
-};
-
-const riskBg = (level: FleetVessel['riskLevel']) => {
-  switch (level) {
-    case 'Critical': return 'bg-destructive/10 text-destructive';
-    case 'High': return 'bg-warning/20 text-warning';
-    case 'Medium': return 'bg-warning/10 text-warning';
-    case 'Low': return 'bg-success/10 text-success';
-  }
-};
+const SHIP_BLUE = 'hsl(224, 76%, 48%)';
 
 const FleetOverview = () => {
   const navigate = useNavigate();
@@ -30,6 +14,7 @@ const FleetOverview = () => {
   const mapInstanceRef = useRef<L.Map | null>(null);
   const [sortBy, setSortBy] = useState<'risk' | 'charter'>('risk');
   const [panelOpen, setPanelOpen] = useState(false);
+  const [transitioning, setTransitioning] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem('voyageguard_captain');
@@ -52,6 +37,27 @@ const FleetOverview = () => {
 
   const charteredAtRisk = fleetVessels.filter(v => v.chartered && v.riskScore >= 50).length;
 
+  const handleVesselSelect = (vessel: FleetVessel) => {
+    handleExploreVoyage(vessel);
+    const map = mapInstanceRef.current;
+    if (map) {
+      // Zoom into the vessel smoothly
+      map.flyTo([vessel.position.lat, vessel.position.lng], 7, {
+        duration: 1.5,
+        easeLinearity: 0.25,
+      });
+      // After zoom completes, fade out and navigate
+      setTimeout(() => {
+        setTransitioning(true);
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 600);
+      }, 1400);
+    } else {
+      navigate('/dashboard');
+    }
+  };
+
   // Map setup
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
@@ -70,13 +76,12 @@ const FleetOverview = () => {
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     fleetVessels.forEach(vessel => {
-      const color = riskColor(vessel.riskLevel);
       const icon = L.divIcon({
         className: 'fleet-ship-marker',
         html: `
           <div style="position:relative; width:36px; height:36px; cursor:pointer;">
-            <div style="position:absolute; inset:0; background:${color}20; border-radius:50%; animation: pulse-ring 2.5s ease-out infinite;"></div>
-            <div style="position:absolute; inset:4px; background:${color}; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">
+            <div style="position:absolute; inset:0; background:${SHIP_BLUE}20; border-radius:50%; animation: pulse-ring 2.5s ease-out infinite;"></div>
+            <div style="position:absolute; inset:4px; background:${SHIP_BLUE}; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1 .6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.94 5.34 2.81 7.76"/><path d="M19 13V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v6"/><path d="M12 10v4"/><path d="M12 2v3"/></svg>
             </div>
           </div>
@@ -112,12 +117,13 @@ const FleetOverview = () => {
             <div style="margin-top:6px; padding-top:4px; border-top:1px solid #e2e8f0; font-size:9px; color:#64748b;">
               ${vessel.departurePort} → ${vessel.destinationPort} · ETA: ${vessel.eta}
             </div>
+            <div style="margin-top:4px; font-size:9px; color:hsl(224,76%,48%); font-weight:700;">Click to view voyage details →</div>
           </div>`,
           { direction: 'top', offset: [0, -18], className: 'fleet-vessel-tooltip' }
         );
 
       marker.on('click', () => {
-        setPanelOpen(true);
+        handleVesselSelect(vessel);
       });
     });
 
@@ -126,9 +132,14 @@ const FleetOverview = () => {
   }, []);
 
   return (
-    <div className="h-screen bg-background flex flex-col overflow-hidden">
+    <div className="h-screen bg-background flex flex-col overflow-hidden relative">
+      {/* Transition overlay */}
+      <div
+        className={`absolute inset-0 z-[9999] bg-background pointer-events-none transition-opacity duration-500 ${transitioning ? 'opacity-100' : 'opacity-0'}`}
+      />
+
       {/* Top Bar */}
-      <header className="h-14 border-b border-border flex items-center justify-between px-6 bg-card shrink-0">
+      <header className="h-14 border-b border-border flex items-center justify-between px-6 bg-card shrink-0 z-10">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
@@ -166,17 +177,6 @@ const FleetOverview = () => {
       {/* Fullscreen Map with sliding panel */}
       <div className="flex-1 relative min-h-0">
         <div ref={mapRef} className="w-full h-full" />
-
-        {/* Risk Legend */}
-        <div className="absolute bottom-4 left-4 z-[1000] bg-card border border-border rounded-xl px-4 py-3 shadow-sm">
-          <div className="text-[10px] font-bold text-foreground tracking-wider mb-2">RISK LEGEND</div>
-          <div className="flex items-center gap-4 text-[11px]">
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-success" /> Low</span>
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-warning" /> Med</span>
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ background: 'hsl(25, 90%, 50%)' }} /> High</span>
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-destructive" /> Critical</span>
-          </div>
-        </div>
 
         {/* Fleet stats overlay */}
         <div className="absolute top-4 left-4 z-[1000] flex gap-2">
@@ -216,22 +216,17 @@ const FleetOverview = () => {
             {sortedVessels.map(v => (
               <div
                 key={v.id}
-                className={`px-4 py-3 border-b border-border/50 hover:bg-muted/40 transition-colors cursor-pointer ${v.chartered && v.riskScore >= 50 ? 'bg-destructive/[0.03]' : ''}`}
-                onClick={() => {
-                  handleExploreVoyage(v);
-                  navigate('/dashboard');
-                }}
+                className="px-4 py-3 border-b border-border/50 hover:bg-primary/5 transition-colors cursor-pointer"
+                onClick={() => handleVesselSelect(v)}
               >
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-primary" />
                     <span className="text-xs font-bold text-foreground">{v.name}</span>
                     {v.chartered && (
                       <span className="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">★ CHARTERED</span>
                     )}
                   </div>
-                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${riskBg(v.riskLevel)}`}>
-                    {v.riskScore}
-                  </span>
                 </div>
                 <div className="text-[10px] text-muted-foreground mb-1">
                   IMO: {v.imo} · {v.type.split(' ')[0]}
@@ -240,16 +235,7 @@ const FleetOverview = () => {
                   <span className="text-muted-foreground">{v.departurePort.split(' ')[0]} → {v.destinationPort.split(' ')[0]}</span>
                   <span className="text-foreground font-medium">{v.speed}</span>
                   <span className="text-muted-foreground">ETA: {v.eta}</span>
-                  {v.delayHours > 0 && (
-                    <span className="text-destructive font-bold">+{v.delayHours}h</span>
-                  )}
                 </div>
-                {v.financialExposure > 0 && (
-                  <div className="text-[10px] font-bold text-foreground mt-1">
-                    Exposure: ${(v.financialExposure / 1000).toFixed(0)}k
-                    {v.chartered && v.charterRate && <span className="text-primary ml-2">${(v.charterRate / 1000).toFixed(0)}k/day charter</span>}
-                  </div>
-                )}
               </div>
             ))}
           </div>

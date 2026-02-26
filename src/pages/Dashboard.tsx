@@ -11,6 +11,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [captain, setCaptain] = useState<Captain | null>(null);
   const [time, setTime] = useState(new Date());
+  const [entered, setEntered] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem('voyageguard_captain');
@@ -19,6 +20,10 @@ const Dashboard = () => {
       return;
     }
     setCaptain(JSON.parse(stored));
+    // Trigger entrance animation after mount
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setEntered(true));
+    });
   }, [navigate]);
 
   useEffect(() => {
@@ -34,7 +39,7 @@ const Dashboard = () => {
   if (!captain) return null;
 
   return (
-    <div className="h-screen bg-background flex flex-col overflow-hidden">
+    <div className={`h-screen bg-background flex flex-col overflow-hidden transition-opacity duration-700 ease-out ${entered ? 'opacity-100' : 'opacity-0'}`}>
       {/* Top Bar */}
       <header className="h-14 border-b border-border flex items-center justify-between px-6 bg-card shrink-0">
         <div className="flex items-center gap-6">
