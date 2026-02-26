@@ -337,6 +337,7 @@ const FleetOverview = () => {
           </div>
           <nav className="hidden md:flex items-center gap-1">
             <NavTab active>Fleet Overview</NavTab>
+            <NavTab onClick={() => navigate('/port-intelligence')}>Port Intelligence</NavTab>
             <NavTab onClick={() => navigate('/voyage-planner')}>Voyage Planner</NavTab>
           </nav>
         </div>
