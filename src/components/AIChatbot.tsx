@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Bot, Send, User, Sparkles, MoreVertical, Search, Database, BarChart3, Globe, Zap, CheckCircle2, Loader2, ArrowRight, DollarSign, Clock, TrendingUp, Shield, AlertTriangle } from 'lucide-react';
+import { Bot, Send, User, Sparkles, MoreVertical, Loader2, CheckCircle2, Zap, DollarSign, Clock, Shield, AlertTriangle, Search, BarChart3, TrendingUp, Database, Globe, ArrowRight, XCircle, CalendarClock, Save } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 interface AIChatbotProps {
@@ -31,6 +31,7 @@ interface AgentMessage {
   actions?: ActionButton[];
   isStreaming?: boolean;
   badge?: string;
+  savedBid?: { amount: string; canal: string; status: string; ref: string; time: string };
 }
 
 const TOOL_ICONS: Record<string, React.ReactNode> = {
@@ -39,107 +40,25 @@ const TOOL_ICONS: Record<string, React.ReactNode> = {
   'Price Predictor': <TrendingUp className="w-3 h-3" />,
   'Risk Engine': <Shield className="w-3 h-3" />,
   'Bid Optimizer': <DollarSign className="w-3 h-3" />,
-  'Web Search': <Globe className="w-3 h-3" />,
+  'Bid Submission': <Zap className="w-3 h-3" />,
+  'API Response': <Globe className="w-3 h-3" />,
   'Database Query': <Database className="w-3 h-3" />,
   'Congestion API': <Zap className="w-3 h-3" />,
 };
 
-// Proactive agent scenarios
-const agentScenarios: { tools: { name: string; detail: string }[]; content: string; badge?: string; actions?: ActionButton[] }[] = [
-  {
-    tools: [
-      { name: 'Market Analysis', detail: 'Scanning 847 recent bids...' },
-      { name: 'Price Predictor', detail: 'Running Monte Carlo simulation...' },
-      { name: 'Congestion API', detail: 'Fetching live queue data...' },
-    ],
-    badge: 'LIVE ALERT',
-    content: `**Bid window closing in 5h 42m.** I've analyzed 847 recent transit bids and current queue conditions.\n\n**Key findings:**\n- Current clearing price trending **$42,800** (↑8% from yesterday)\n- Queue depth: **23 vessels** waiting — highest this week\n- Optimal bid window: **next 2 hours** before Asian fleet submits\n\nMy model suggests **$44,200** gives you a 91% success probability while saving $3,800 vs. the safe ceiling.`,
-    actions: [
-      { label: 'Place Bid at $44,200', variant: 'primary', action: 'place_bid_44200' },
-      { label: 'Show me alternatives', variant: 'outline', action: 'show_alternatives' },
-      { label: 'Wait & monitor', variant: 'outline', action: 'wait_monitor' },
-    ],
-  },
-  {
-    tools: [
-      { name: 'Risk Engine', detail: 'Calculating delay costs...' },
-      { name: 'Database Query', detail: 'Pulling historical patterns...' },
-    ],
-    badge: 'RISK UPDATE',
-    content: `**Delay cost alert.** If you skip this auction round:\n\n- Est. wait time increases to **4.2 days** (from 2.8)\n- Demurrage exposure: **$340,000**\n- Next auction window: **18 hours away**\n\nHistorical data shows vessels that bid in the first window save an average of **$12,400** compared to second-round bids.`,
-    actions: [
-      { label: 'Bid now — minimize risk', variant: 'success', action: 'bid_now' },
-      { label: 'Calculate break-even', variant: 'outline', action: 'calc_breakeven' },
-    ],
-  },
-  {
-    tools: [
-      { name: 'Web Search', detail: 'Checking maritime news feeds...' },
-      { name: 'Congestion API', detail: 'Monitoring vessel movements...' },
-      { name: 'Bid Optimizer', detail: 'Recalculating optimal range...' },
-    ],
-    badge: 'MARKET SHIFT',
-    content: `**Breaking:** 3 VLCCs just cancelled northbound transits — queue dropped from 23 to 20 vessels.\n\nThis changes the dynamics significantly:\n- Clearing price prediction **dropped 6%** to ~$40,100\n- My confidence for a $41,500 bid just jumped to **94%**\n- Window of opportunity: **~45 minutes** before market adjusts`,
-    actions: [
-      { label: 'Quick bid $41,500', variant: 'primary', action: 'quick_bid' },
-      { label: 'Set auto-bid ceiling', variant: 'outline', action: 'set_ceiling' },
-      { label: 'Ignore — too risky', variant: 'destructive', action: 'ignore' },
-    ],
-  },
-];
+// Bidding flow state
+type BidPhase = 'analysis' | 'ready' | 'submitted' | 'failed_1' | 'failed_2' | 'failed_3' | 'stop' | 'next_day' | 'success';
 
-const userResponses: Record<string, { tools: { name: string; detail: string }[]; content: string; actions?: ActionButton[] }> = {
-  'place_bid_44200': {
-    tools: [
-      { name: 'Bid Optimizer', detail: 'Submitting bid $44,200...' },
-      { name: 'Database Query', detail: 'Recording transaction...' },
-    ],
-    content: `**Bid submitted successfully.** \n\n- Amount: **$44,200**\n- Transit: Suez Canal Northbound\n- Priority tier: **Premium**\n- Estimated confirmation: **12-18 minutes**\n\nI'll monitor the auction and alert you the moment results come in. Meanwhile, I'm tracking 3 competing bids in your price range.`,
-    actions: [
-      { label: 'Modify bid amount', variant: 'outline', action: 'modify_bid' },
-      { label: 'View competitors', variant: 'outline', action: 'view_competitors' },
-    ],
-  },
-  'show_alternatives': {
-    tools: [
-      { name: 'Price Predictor', detail: 'Generating bid scenarios...' },
-      { name: 'Risk Engine', detail: 'Scoring each option...' },
-    ],
-    content: `**Alternative bid strategies:**\n\n| Strategy | Amount | Success % | Risk |\n|----------|--------|-----------|------|\n| Aggressive | $41,000 | 67% | High |\n| **Balanced** | **$44,200** | **91%** | **Low** |\n| Safe | $47,500 | 98% | None |\n| Premium Rush | $52,000 | 99.5% | None |\n\nMy recommendation remains the **balanced** approach — best value-to-probability ratio.`,
-    actions: [
-      { label: 'Go aggressive $41k', variant: 'destructive', action: 'bid_aggressive' },
-      { label: 'Balanced $44.2k', variant: 'primary', action: 'place_bid_44200' },
-      { label: 'Play it safe $47.5k', variant: 'success', action: 'bid_safe' },
-    ],
-  },
-  'wait_monitor': {
-    tools: [
-      { name: 'Congestion API', detail: 'Setting up live monitoring...' },
-    ],
-    content: `**Monitoring mode activated.** I'll track:\n- Bid clearing price changes (alert if >5% swing)\n- Queue depth changes\n- Competing vessel movements\n\nI'll proactively alert you if conditions shift in your favor or if risk increases.`,
-    actions: [
-      { label: 'Set price alert threshold', variant: 'outline', action: 'set_alert' },
-    ],
-  },
-  'default': {
-    tools: [
-      { name: 'Market Analysis', detail: 'Processing your request...' },
-    ],
-    content: `I've analyzed your query against current market conditions. The Suez Canal northbound transit market is currently active with **23 vessels** in queue.\n\nWould you like me to run a detailed analysis or adjust your bidding strategy?`,
-    actions: [
-      { label: 'Run full analysis', variant: 'primary', action: 'show_alternatives' },
-      { label: 'Check current prices', variant: 'outline', action: 'wait_monitor' },
-    ],
-  },
-};
+const BID_AMOUNTS = ['$38,500', '$42,200', '$46,800'];
+const BID_AMOUNTS_NUM = [38500, 42200, 46800];
 
-const AIChatbot = ({ canalName, bidAmount }: AIChatbotProps) => {
+const AIChatbot = ({ canalName = 'Suez Canal' }: AIChatbotProps) => {
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [bidPhase, setBidPhase] = useState<BidPhase>('analysis');
+  const [bidAttempt, setBidAttempt] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const scenarioIdx = useRef(0);
-  const proactiveTimer = useRef<NodeJS.Timeout | null>(null);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
@@ -147,11 +66,10 @@ const AIChatbot = ({ canalName, bidAmount }: AIChatbotProps) => {
     }, 50);
   }, []);
 
-  // Simulate tool execution with staggered completion
-  const simulateAgentResponse = useCallback((scenario: typeof agentScenarios[0], isProactive = false) => {
+  const addAgentMessage = useCallback((
+    scenario: { tools: { name: string; detail: string }[]; content: string; badge?: string; actions?: ActionButton[]; savedBid?: AgentMessage['savedBid'] }
+  ) => {
     setIsProcessing(true);
-
-    // Create initial message with tools in "running" state
     const msgId = Date.now().toString();
     const initialTools: ToolUsage[] = scenario.tools.map(t => ({
       name: t.name,
@@ -160,19 +78,12 @@ const AIChatbot = ({ canalName, bidAmount }: AIChatbotProps) => {
       detail: t.detail,
     }));
 
-    const agentMsg: AgentMessage = {
-      id: msgId,
-      role: 'agent',
-      content: '',
-      timestamp: new Date(),
-      tools: initialTools,
-      isStreaming: true,
-      badge: isProactive ? scenario.badge : undefined,
-    };
-    setMessages(prev => [...prev, agentMsg]);
+    setMessages(prev => [...prev, {
+      id: msgId, role: 'agent', content: '', timestamp: new Date(),
+      tools: initialTools, isStreaming: true, badge: scenario.badge,
+    }]);
     scrollToBottom();
 
-    // Stagger tool completions
     scenario.tools.forEach((_, idx) => {
       setTimeout(() => {
         setMessages(prev => prev.map(m => {
@@ -182,11 +93,10 @@ const AIChatbot = ({ canalName, bidAmount }: AIChatbotProps) => {
           return { ...m, tools: updatedTools };
         }));
         scrollToBottom();
-      }, 600 + idx * 800);
+      }, 600 + idx * 700);
     });
 
-    // Stream content after tools complete
-    const totalToolTime = 600 + scenario.tools.length * 800 + 300;
+    const totalToolTime = 600 + scenario.tools.length * 700 + 300;
     const words = scenario.content.split(' ');
     let wordIdx = 0;
 
@@ -201,10 +111,9 @@ const AIChatbot = ({ canalName, bidAmount }: AIChatbotProps) => {
 
         if (wordIdx >= words.length) {
           clearInterval(streamInterval);
-          // Add action buttons
           setTimeout(() => {
             setMessages(prev => prev.map(m =>
-              m.id === msgId ? { ...m, isStreaming: false, actions: scenario.actions } : m
+              m.id === msgId ? { ...m, isStreaming: false, actions: scenario.actions, savedBid: scenario.savedBid } : m
             ));
             setIsProcessing(false);
             scrollToBottom();
@@ -214,46 +123,219 @@ const AIChatbot = ({ canalName, bidAmount }: AIChatbotProps) => {
     }, totalToolTime);
   }, [scrollToBottom]);
 
-  // Initial proactive message
+  // Initial analysis message
   useEffect(() => {
     const t = setTimeout(() => {
-      simulateAgentResponse(agentScenarios[0], true);
+      addAgentMessage({
+        tools: [
+          { name: 'Market Analysis', detail: 'Scanning 847 recent bids...' },
+          { name: 'Queue Scanner', detail: 'Checking current queue depth...' },
+          { name: 'Price Predictor', detail: 'Calculating safe bid range...' },
+        ],
+        badge: 'MARKET ANALYSIS',
+        content: `**${canalName} — Transit Bid Analysis**\n\nI've analyzed current market conditions for your transit:\n\n- **Queue depth:** 23 vessels waiting\n- **Current clearing price:** ~$38,500\n- **Bid window closes:** 5h 42m\n- **Recommended safe bid:** **${BID_AMOUNTS[0]}**\n\nThis amount gives you the highest probability of acceptance at the lowest cost. Shall I submit this bid?`,
+        actions: [
+          { label: `Place Safe Bid — ${BID_AMOUNTS[0]}`, variant: 'primary', action: 'place_bid' },
+          { label: 'Explain the analysis', variant: 'outline', action: 'explain' },
+        ],
+      });
+      setBidPhase('ready');
     }, 800);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Proactive messages every 45s
-  useEffect(() => {
-    proactiveTimer.current = setInterval(() => {
-      if (isProcessing) return;
-      scenarioIdx.current = (scenarioIdx.current + 1) % agentScenarios.length;
-      simulateAgentResponse(agentScenarios[scenarioIdx.current], true);
-    }, 45000);
-    return () => { if (proactiveTimer.current) clearInterval(proactiveTimer.current); };
-  }, [isProcessing, simulateAgentResponse]);
-
   const handleAction = (action: string) => {
     if (isProcessing) return;
-    const response = userResponses[action] || userResponses['default'];
-    simulateAgentResponse({ ...response, badge: undefined });
+
+    if (action === 'explain') {
+      addAgentMessage({
+        tools: [{ name: 'Risk Engine', detail: 'Running cost-benefit analysis...' }],
+        content: `**How I calculated the safe bid:**\n\n1. **Historical clearing prices** — Last 30 days median: $36,200\n2. **Current demand surge** — 23 vessels in queue (+35% above normal)\n3. **Time pressure** — Auction closes in <6 hours\n4. **Your vessel profile** — MV Northern Star, standard priority\n\nAt **${BID_AMOUNTS[0]}**, you have ~78% acceptance probability. This balances cost-efficiency with a reasonable chance of success.\n\nReady to submit?`,
+        actions: [
+          { label: `Submit Bid — ${BID_AMOUNTS[0]}`, variant: 'primary', action: 'place_bid' },
+        ],
+      });
+      return;
+    }
+
+    if (action === 'place_bid') {
+      const attempt = bidAttempt;
+      const amount = BID_AMOUNTS[attempt] || BID_AMOUNTS[2];
+
+      // User message
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(), role: 'user',
+        content: `Place my bid at ${amount}`, timestamp: new Date(),
+      }]);
+      scrollToBottom();
+
+      setTimeout(() => {
+        // Submitting
+        addAgentMessage({
+          tools: [
+            { name: 'Bid Submission', detail: `Submitting bid $${amount}...` },
+            { name: 'API Response', detail: 'Waiting for exchange confirmation...' },
+          ],
+          badge: 'BID SUBMITTED',
+          content: `**Bid submitted:** ${amount}\n\n- Canal: ${canalName} Northbound\n- Priority tier: Standard\n- Vessel: MV Northern Star\n\n⏳ Awaiting exchange response... This typically takes 2-5 minutes.`,
+        });
+
+        // After "waiting", show result
+        setTimeout(() => {
+          if (attempt < 2) {
+            // FAIL
+            const nextAmount = BID_AMOUNTS[attempt + 1];
+            const failReasons = [
+              `Your bid of ${amount} was **outbid** by 4 competing vessels. The clearing price settled at **$40,100** — your bid was $1,600 below the cutoff.\n\nThe market is more competitive than expected. I recommend increasing to **${nextAmount}** for the next round.`,
+              `Second attempt at ${amount} — **rejected again.** The clearing price climbed to **$44,500** due to 3 new VLCC entries.\n\nI can try one more time at **${nextAmount}**, but I want to flag that we're approaching overpayment territory.`,
+            ];
+            setBidAttempt(attempt + 1);
+            setBidPhase(attempt === 0 ? 'failed_1' : 'failed_2');
+            addAgentMessage({
+              tools: [
+                { name: 'API Response', detail: 'Bid result received...' },
+                { name: 'Market Analysis', detail: 'Recalculating optimal range...' },
+              ],
+              badge: 'BID REJECTED',
+              content: `❌ **Bid Failed**\n\n${failReasons[attempt]}`,
+              actions: [
+                { label: `Retry at ${nextAmount}`, variant: 'primary', action: 'place_bid' },
+                { label: 'Stop bidding today', variant: 'destructive', action: 'stop_bidding' },
+              ],
+            });
+          } else if (attempt === 2) {
+            // Third fail → agent recommends stopping
+            setBidAttempt(3);
+            setBidPhase('failed_3');
+            addAgentMessage({
+              tools: [
+                { name: 'API Response', detail: 'Third bid rejected...' },
+                { name: 'Risk Engine', detail: 'Evaluating continued bidding risk...' },
+                { name: 'Price Predictor', detail: 'Forecasting tomorrow\'s prices...' },
+              ],
+              badge: '⚠️ RECOMMENDATION',
+              content: `❌ **Third bid rejected.** Clearing price: **$49,200**\n\n**I strongly recommend stopping for today.** Here's why:\n\n- Prices are **artificially inflated** — a large fleet is bulk-booking slots\n- Continuing would push you past **$50k**, which is 30% above fair value\n- Tomorrow's forecast shows prices dropping to **$36k–$40k** range as the bulk booking clears\n- Your vessel can safely wait — no demurrage penalty until 36h from now\n\n**Estimated savings by waiting: $10,000–$14,000**\n\nI'll monitor overnight and alert you when the window reopens.`,
+              actions: [
+                { label: 'Agree — wait until tomorrow', variant: 'success', action: 'wait_tomorrow' },
+                { label: 'Force bid anyway', variant: 'destructive', action: 'force_bid' },
+              ],
+            });
+          }
+        }, 4000);
+      }, 300);
+      return;
+    }
+
+    if (action === 'stop_bidding' || action === 'wait_tomorrow') {
+      setBidPhase('next_day');
+      addAgentMessage({
+        tools: [
+          { name: 'Congestion API', detail: 'Setting overnight monitoring...' },
+        ],
+        content: `**Monitoring mode activated.** I'll watch the market overnight and alert you when conditions improve.\n\n📊 Current overnight forecast:\n- Expected clearing price drop: **-18%**\n- Optimal bid window: **06:00–08:00 UTC tomorrow**\n- Confidence: **High (89%)**\n\n_You can come back anytime — I'll have a fresh analysis ready._`,
+        actions: [
+          { label: '⏭ Simulate next day', variant: 'primary', action: 'next_day' },
+        ],
+      });
+      return;
+    }
+
+    if (action === 'force_bid') {
+      addAgentMessage({
+        tools: [{ name: 'Bid Submission', detail: 'Submitting forced bid at $52,000...' }],
+        content: `⚠️ **Proceeding against recommendation.** Bid submitted at **$52,000**.\n\nThis is 35% above the 30-day median. I've logged a risk flag for your records.`,
+      });
+      return;
+    }
+
+    if (action === 'next_day') {
+      setBidPhase('next_day');
+      addAgentMessage({
+        tools: [
+          { name: 'Market Analysis', detail: 'Fresh morning scan...' },
+          { name: 'Queue Scanner', detail: 'Queue dropped overnight...' },
+          { name: 'Price Predictor', detail: 'New price model ready...' },
+        ],
+        badge: '🌅 NEW DAY',
+        content: `**Good morning, Captain.** As predicted, conditions improved significantly overnight.\n\n- **Queue:** Dropped from 23 → 14 vessels\n- **Clearing price:** Down to **$35,800** (−27% from yesterday's peak)\n- **Competition:** The bulk-booking fleet completed their transits\n\nMy recommended bid: **$37,500** — this gives you **94% acceptance probability** and saves you ~$14,700 compared to yesterday's prices.\n\nShall I submit?`,
+        actions: [
+          { label: 'Place Bid — $37,500', variant: 'primary', action: 'final_bid' },
+        ],
+      });
+      return;
+    }
+
+    if (action === 'final_bid') {
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(), role: 'user',
+        content: 'Place my bid at $37,500', timestamp: new Date(),
+      }]);
+      scrollToBottom();
+
+      setTimeout(() => {
+        addAgentMessage({
+          tools: [
+            { name: 'Bid Submission', detail: 'Submitting bid $37,500...' },
+            { name: 'API Response', detail: 'Waiting for confirmation...' },
+          ],
+          badge: 'BID SUBMITTED',
+          content: `**Bid submitted:** $37,500\n\n⏳ Awaiting exchange response...`,
+        });
+
+        setTimeout(() => {
+          setBidPhase('success');
+          const ref = `SC-${Math.floor(10000 + Math.random() * 90000)}`;
+          const now = new Date();
+          addAgentMessage({
+            tools: [
+              { name: 'API Response', detail: 'Bid ACCEPTED!' },
+              { name: 'Database Query', detail: 'Saving bid confirmation...' },
+            ],
+            badge: '🎉 BID ACCEPTED',
+            content: `## ✅ Congratulations, Captain!\n\nYour bid has been **accepted** by the ${canalName} Transit Authority.\n\n**Transit Confirmation:**\n- **Amount:** $37,500\n- **Canal:** ${canalName} Northbound\n- **Transit slot:** Oct 25, 14:00 UTC\n- **Priority:** Standard\n- **Reference:** ${ref}\n\n**Savings report:**\n- vs. yesterday's market: **−$14,700** saved\n- vs. premium rush: **−$22,500** saved\n\nYour confirmation has been saved below. You can access it anytime from this chat.`,
+            savedBid: {
+              amount: '$37,500',
+              canal: `${canalName} Northbound`,
+              status: 'CONFIRMED',
+              ref,
+              time: now.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            },
+          });
+        }, 4500);
+      }, 300);
+      return;
+    }
+
+    if (action === 'view_receipt') {
+      // Scroll to the saved bid message
+      const savedMsg = messages.find(m => m.savedBid);
+      if (savedMsg) {
+        const el = document.getElementById(`msg-${savedMsg.id}`);
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
   };
 
   const handleSend = () => {
     if (!input.trim() || isProcessing) return;
     const userMsg: AgentMessage = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: input,
-      timestamp: new Date(),
+      id: Date.now().toString(), role: 'user',
+      content: input, timestamp: new Date(),
     };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     scrollToBottom();
 
-    const response = userResponses['default'];
     setTimeout(() => {
-      simulateAgentResponse({ ...response, badge: undefined });
+      addAgentMessage({
+        tools: [{ name: 'Market Analysis', detail: 'Processing your request...' }],
+        content: `I understand your question. Based on current ${canalName} market conditions with **23 vessels** in queue, the optimal strategy depends on timing.\n\nWould you like me to proceed with the recommended safe bid?`,
+        actions: bidPhase === 'ready' || bidPhase === 'analysis'
+          ? [{ label: `Place Safe Bid — ${BID_AMOUNTS[0]}`, variant: 'primary' as const, action: 'place_bid' }]
+          : undefined,
+      });
     }, 300);
   };
 
@@ -291,7 +373,7 @@ const AIChatbot = ({ canalName, bidAmount }: AIChatbotProps) => {
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-thin">
         {messages.map(msg => (
-          <div key={msg.id}>
+          <div key={msg.id} id={`msg-${msg.id}`}>
             {msg.role === 'user' ? (
               <div className="flex gap-2 justify-end">
                 <div className="max-w-[80%] rounded-xl px-3 py-2 text-sm bg-primary text-primary-foreground">
@@ -307,15 +389,21 @@ const AIChatbot = ({ canalName, bidAmount }: AIChatbotProps) => {
                   <Bot className="w-3.5 h-3.5 text-primary" />
                 </div>
                 <div className="max-w-[90%] space-y-2">
-                  {/* Badge */}
                   {msg.badge && (
-                    <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-warning/15 text-warning border border-warning/20 animate-pulse">
-                      <AlertTriangle className="w-2.5 h-2.5" />
+                    <span className={`inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full animate-pulse ${
+                      msg.badge.includes('ACCEPTED') || msg.badge.includes('🎉')
+                        ? 'bg-success/15 text-success border border-success/20'
+                        : msg.badge.includes('REJECTED') || msg.badge.includes('⚠')
+                        ? 'bg-destructive/15 text-destructive border border-destructive/20'
+                        : 'bg-warning/15 text-warning border border-warning/20'
+                    }`}>
+                      {msg.badge.includes('REJECTED') ? <XCircle className="w-2.5 h-2.5" /> :
+                       msg.badge.includes('ACCEPTED') || msg.badge.includes('🎉') ? <CheckCircle2 className="w-2.5 h-2.5" /> :
+                       <AlertTriangle className="w-2.5 h-2.5" />}
                       {msg.badge}
                     </span>
                   )}
 
-                  {/* Tool usage indicators */}
                   {msg.tools && msg.tools.length > 0 && (
                     <div className="space-y-1">
                       {msg.tools.map((tool, i) => (
@@ -333,7 +421,6 @@ const AIChatbot = ({ canalName, bidAmount }: AIChatbotProps) => {
                     </div>
                   )}
 
-                  {/* Content */}
                   {msg.content && (
                     <div className="bg-card border border-border rounded-xl px-3 py-2.5 text-sm">
                       <div className="prose prose-sm max-w-none [&_p]:mb-1.5 [&_p]:last:mb-0 [&_ul]:mb-1 [&_table]:text-[11px] [&_th]:text-left [&_th]:pr-3 [&_td]:pr-3 [&_th]:pb-1 [&_td]:py-0.5 [&_strong]:text-foreground">
@@ -345,7 +432,28 @@ const AIChatbot = ({ canalName, bidAmount }: AIChatbotProps) => {
                     </div>
                   )}
 
-                  {/* Action buttons */}
+                  {/* Saved bid receipt card */}
+                  {msg.savedBid && (
+                    <div className="bg-success/5 border-2 border-success/30 rounded-xl p-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Save className="w-4 h-4 text-success" />
+                        <span className="text-xs font-bold text-success uppercase tracking-wider">Bid Confirmation Saved</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                        <div className="text-muted-foreground">Amount</div>
+                        <div className="font-bold text-foreground">{msg.savedBid.amount}</div>
+                        <div className="text-muted-foreground">Canal</div>
+                        <div className="font-semibold text-foreground">{msg.savedBid.canal}</div>
+                        <div className="text-muted-foreground">Status</div>
+                        <div className="font-bold text-success">{msg.savedBid.status}</div>
+                        <div className="text-muted-foreground">Reference</div>
+                        <div className="font-mono text-foreground">{msg.savedBid.ref}</div>
+                        <div className="text-muted-foreground">Confirmed</div>
+                        <div className="text-foreground">{msg.savedBid.time}</div>
+                      </div>
+                    </div>
+                  )}
+
                   {msg.actions && msg.actions.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {msg.actions.map((action, i) => (

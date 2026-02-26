@@ -152,7 +152,7 @@ const BiddingDetail = () => {
           </div>
           <nav className="hidden md:flex items-center gap-1">
             <NavTab onClick={() => navigate('/fleet')}>Fleet Overview</NavTab>
-            <NavTab onClick={() => navigate('/fleet')}>Fleet Overview</NavTab>
+            <NavTab active>Bidding Hub</NavTab>
             <NavTab onClick={() => navigate('/voyage-planner')}>Voyage Planner</NavTab>
           </nav>
         </div>
