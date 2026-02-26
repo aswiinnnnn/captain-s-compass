@@ -7,11 +7,17 @@ import {
   type Port, type Vessel, type VoyageRouteOption,
 } from '@/data/voyagePlannerData';
 import { fleetVessels } from '@/data/fleetData';
+import {
+  portEntries, calendarEvents, getPortRiskScore, getPortDailyCost,
+  EVENT_TYPE_CONFIG, CONGESTION_CONFIG,
+  type CalendarEvent,
+} from '@/data/portIntelligenceData';
 import NavTab from '@/components/NavTab';
 import {
   Anchor, Bell, Settings, Search, ChevronDown, ChevronUp, ArrowUpDown,
   Ship, MapPin, Calendar, Clock, Fuel, Navigation, Route, Play, Pause,
   Layers, Plus, Table2, Trash2, Upload, Check, X, Info, Wind,
+  AlertTriangle, ExternalLink, DollarSign, Shield,
 } from 'lucide-react';
 
 type OptimizeMode = 'fixed-eta' | 'lowest-cost' | 'fixed-instruction';
@@ -360,6 +366,9 @@ const VoyagePlanner = () => {
                   </div>
                 </div>
               ))}
+
+              {/* Port Intelligence References */}
+              <PortIntelligencePanel fromPortId={fromPort.id} toPortId={toPort.id} departureUTC={routeOptions[0]?.departureUTC} arrivalUTC={routeOptions[0]?.arrivalUTC} navigate={navigate} />
             </div>
           )}
 
@@ -442,6 +451,9 @@ const VoyagePlanner = () => {
                           </div>
                         ))}
                       </div>
+
+                      {/* Port Intelligence References in Confirmation */}
+                      <ConfirmIntelligenceRefs fromPortId={fromPort.id} toPortId={toPort.id} navigate={navigate} />
 
                       <div className="flex gap-2 pt-2">
                         <button onClick={() => { setStep('results'); setSelectedRoute(null); }} className="flex-1 py-2.5 text-xs font-semibold border border-border rounded hover:bg-muted transition-colors text-foreground">
@@ -846,6 +858,155 @@ const VoyagePlanner = () => {
         }
         .leaflet-control-zoom a:hover { background: hsl(220,14%,97%) !important; }
       `}</style>
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════
+// Port Intelligence Panel (inline in route results)
+// ═══════════════════════════════════════════════════════
+const PortIntelligencePanel = ({ fromPortId, toPortId, departureUTC, arrivalUTC, navigate }: {
+  fromPortId: string; toPortId: string; departureUTC?: string; arrivalUTC?: string; navigate: (path: string) => void;
+}) => {
+  const fromPI = portEntries.find(p => p.id === fromPortId);
+  const toPI = portEntries.find(p => p.id === toPortId);
+
+  const relevantEvents = useMemo(() => {
+    return calendarEvents.filter(ev => {
+      const matchPort = ev.portId === fromPortId || ev.portId === toPortId || ev.portId === null;
+      if (!matchPort) return false;
+      if (departureUTC && arrivalUTC) {
+        const evStart = new Date(ev.startDate).getTime();
+        const evEnd = new Date(ev.endDate).getTime();
+        const voyStart = new Date(departureUTC).getTime();
+        const voyEnd = new Date(arrivalUTC).getTime();
+        return evStart <= voyEnd && evEnd >= voyStart;
+      }
+      return true;
+    });
+  }, [fromPortId, toPortId, departureUTC, arrivalUTC]);
+
+  if (!fromPI && !toPI && relevantEvents.length === 0) return null;
+
+  return (
+    <div className="p-3 border-t border-border space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="text-[9px] font-bold text-muted-foreground tracking-widest">PORT INTELLIGENCE</div>
+        <button onClick={() => navigate('/port-intelligence')} className="flex items-center gap-1 text-[9px] text-primary hover:underline">
+          <ExternalLink className="w-3 h-3" /> View Full Data
+        </button>
+      </div>
+
+      {(fromPI || toPI) && (
+        <div className="space-y-1.5">
+          {[fromPI, toPI].filter(Boolean).map(port => {
+            const p = port!;
+            const risk = getPortRiskScore(p.id);
+            const cong = CONGESTION_CONFIG[p.congestionLevel];
+            return (
+              <div key={p.id} className="rounded-lg bg-muted/50 p-2">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-semibold text-foreground">{p.name}</span>
+                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full" style={{ background: `${cong.color}18`, color: cong.color }}>{cong.label}</span>
+                </div>
+                <div className="flex gap-3 text-[9px] text-muted-foreground">
+                  <span>Anchorage: <strong className="text-foreground">${p.anchorageCostPerDay}/d</strong></span>
+                  <span>Berth: <strong className="text-foreground">${p.berthCostPerHour}/h</strong></span>
+                  <span>Risk: <strong className={risk > 50 ? 'text-destructive' : risk > 30 ? 'text-amber-500' : 'text-green-600'}>{risk}</strong></span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {relevantEvents.length > 0 && (
+        <div className="space-y-1">
+          <div className="text-[9px] font-bold text-muted-foreground tracking-wider">⚠ VOYAGE RISK FACTORS</div>
+          {relevantEvents.slice(0, 4).map(ev => {
+            const cfg = EVENT_TYPE_CONFIG[ev.type];
+            return (
+              <div key={ev.id} className={`rounded-lg border-l-2 p-2 ${cfg.bgClass}`} style={{ borderLeftColor: cfg.color }}>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs">{cfg.icon}</span>
+                  <span className="text-[10px] font-semibold text-foreground flex-1">{ev.title}</span>
+                  <span className={`text-[8px] font-bold px-1 py-0.5 rounded ${ev.severity === 'Critical' ? 'bg-red-200 text-red-800' : ev.severity === 'High' ? 'bg-orange-200 text-orange-800' : 'bg-amber-200 text-amber-800'}`}>{ev.severity}</span>
+                </div>
+                <p className="text-[9px] text-muted-foreground mt-0.5">{ev.description}</p>
+                <div className="text-[8px] text-muted-foreground mt-0.5">
+                  {new Date(ev.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} — {new Date(ev.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                  <button onClick={() => navigate('/port-intelligence')} className="ml-2 text-primary hover:underline inline-flex items-center gap-0.5">
+                    Source <ExternalLink className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════
+// Confirm Intelligence Refs
+// ═══════════════════════════════════════════════════════
+const ConfirmIntelligenceRefs = ({ fromPortId, toPortId, navigate }: {
+  fromPortId: string; toPortId: string; navigate: (path: string) => void;
+}) => {
+  const fromPI = portEntries.find(p => p.id === fromPortId);
+  const toPI = portEntries.find(p => p.id === toPortId);
+
+  const portCostEstimate = useMemo(() => {
+    let total = 0;
+    if (fromPI) total += getPortDailyCost(fromPI, fromPI.estimatedHandlingTimeHrs);
+    if (toPI) total += getPortDailyCost(toPI, toPI.estimatedHandlingTimeHrs);
+    return total;
+  }, [fromPI, toPI]);
+
+  const relevantEvents = calendarEvents.filter(ev =>
+    ev.portId === fromPortId || ev.portId === toPortId || ev.portId === null
+  ).filter(ev => ev.severity === 'High' || ev.severity === 'Critical');
+
+  return (
+    <div className="space-y-2 pt-2 border-t border-border">
+      <div className="flex items-center justify-between">
+        <div className="text-[9px] font-bold text-muted-foreground tracking-widest">PORT COST ESTIMATE</div>
+        <button onClick={() => navigate('/port-intelligence')} className="flex items-center gap-1 text-[9px] text-primary hover:underline">
+          <ExternalLink className="w-3 h-3" /> Port Intelligence
+        </button>
+      </div>
+
+      <div className="bg-muted/50 rounded-lg p-2.5 space-y-1.5">
+        {[fromPI, toPI].filter(Boolean).map(port => {
+          const p = port!;
+          return (
+            <div key={p.id} className="flex items-center justify-between text-[10px]">
+              <span className="text-muted-foreground">{p.name} ({p.estimatedHandlingTimeHrs}h handling)</span>
+              <span className="font-semibold text-foreground">${getPortDailyCost(p, p.estimatedHandlingTimeHrs).toLocaleString()}</span>
+            </div>
+          );
+        })}
+        <div className="flex items-center justify-between text-[11px] font-bold border-t border-border/50 pt-1.5">
+          <span className="text-foreground">Total Port Costs</span>
+          <span className="text-foreground">${portCostEstimate.toLocaleString()}</span>
+        </div>
+      </div>
+
+      {relevantEvents.length > 0 && (
+        <div className="space-y-1">
+          {relevantEvents.slice(0, 3).map(ev => {
+            const cfg = EVENT_TYPE_CONFIG[ev.type];
+            return (
+              <div key={ev.id} className="flex items-center gap-2 text-[9px] p-1.5 rounded bg-amber-50 border border-amber-200">
+                <span>{cfg.icon}</span>
+                <span className="flex-1 text-foreground font-medium">{ev.title}</span>
+                <span className={`text-[8px] font-bold px-1 rounded ${ev.severity === 'Critical' ? 'bg-red-200 text-red-800' : 'bg-orange-200 text-orange-800'}`}>{ev.severity}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
