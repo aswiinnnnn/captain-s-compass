@@ -53,6 +53,11 @@ const BiddingDetail = () => {
   const canal = canalsPorts.find(c => c.id === id);
   const [predictionModel, setPredictionModel] = useState<PredictionModel>('ai');
   const [dailyData] = useState(generateDailyData);
+  const [wonBids, setWonBids] = useState<Array<{ amount: number; ref: string; canal: string; date: string }>>([]);
+
+  const handleBidSuccess = useCallback((bid: { amount: number; ref: string; canal: string; date: string }) => {
+    setWonBids(prev => [...prev, bid]);
+  }, []);
 
   // Chart drag/zoom state
   const chartRef = useRef<HTMLDivElement>(null);
@@ -403,12 +408,24 @@ const BiddingDetail = () => {
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left py-1.5 text-[10px] text-muted-foreground font-semibold">Timestamp</th>
-                  <th className="text-left py-1.5 text-[10px] text-muted-foreground font-semibold">Bid Amount</th>
-                  <th className="text-left py-1.5 text-[10px] text-muted-foreground font-semibold">Priority</th>
+                   <th className="text-left py-1.5 text-[10px] text-muted-foreground font-semibold">Bid Amount</th>
+                   <th className="text-left py-1.5 text-[10px] text-muted-foreground font-semibold">Priority / Ref</th>
                   <th className="text-right py-1.5 text-[10px] text-muted-foreground font-semibold">Status</th>
                 </tr>
               </thead>
               <tbody>
+                {wonBids.map((wb, i) => (
+                  <tr key={`won-${i}`} className="border-b border-border/50 bg-success/5 hover:bg-success/10 transition-colors">
+                    <td className="py-2 text-[11px] text-foreground font-medium">{wb.date}</td>
+                    <td className="py-2 text-xs font-bold text-success">${wb.amount.toLocaleString()}</td>
+                    <td className="py-2 text-[11px] text-foreground font-mono">{wb.ref}</td>
+                    <td className="py-2 text-right">
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full text-success bg-success/10">
+                        ✅ WON
+                      </span>
+                    </td>
+                  </tr>
+                ))}
                 {previousBids.map((bid, i) => (
                   <tr key={i} className="border-b border-border/50 hover:bg-muted/50 transition-colors">
                     <td className="py-2 text-[11px] text-foreground">{bid.time}</td>
@@ -428,7 +445,7 @@ const BiddingDetail = () => {
 
         {/* RIGHT - AI Agent (35% width) */}
         <div className="hidden lg:flex border-l border-border flex-col h-full overflow-hidden shrink-0" style={{ width: '35%' }}>
-          <AIChatbot canalName={canal.name} />
+          <AIChatbot canalName={canal.name} onBidSuccess={handleBidSuccess} />
         </div>
       </div>
     </div>
