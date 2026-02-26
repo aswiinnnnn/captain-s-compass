@@ -98,7 +98,7 @@ const RiskAnalysis = () => {
           </div>
           <nav className="hidden md:flex items-center gap-1">
             <NavTab onClick={() => navigate('/fleet')}>Fleet Overview</NavTab>
-            <NavTab onClick={() => navigate('/dashboard')}>Dashboard</NavTab>
+            <NavTab onClick={() => navigate('/fleet')}>Fleet Overview</NavTab>
             <NavTab>Bidding Hub</NavTab>
             <NavTab>Fleet Analytics</NavTab>
           </nav>

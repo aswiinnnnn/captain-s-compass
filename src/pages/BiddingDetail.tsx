@@ -115,7 +115,7 @@ const BiddingDetail = () => {
   }, [navigate]);
 
   if (!canal) {
-    navigate('/dashboard');
+    navigate('/fleet');
     return null;
   }
 
@@ -152,7 +152,7 @@ const BiddingDetail = () => {
           </div>
           <nav className="hidden md:flex items-center gap-1">
             <NavTab onClick={() => navigate('/fleet')}>Fleet Overview</NavTab>
-            <NavTab onClick={() => navigate('/dashboard')}>Bidding Hub</NavTab>
+            <NavTab onClick={() => navigate('/fleet')}>Fleet Overview</NavTab>
             <NavTab onClick={() => navigate('/voyage-planner')}>Voyage Planner</NavTab>
           </nav>
         </div>
@@ -174,7 +174,7 @@ const BiddingDetail = () => {
       {/* Sub-header breadcrumb */}
       <div className="border-b border-border px-6 py-2 bg-card shrink-0">
         <div className="flex items-center gap-2 text-xs">
-          <button onClick={() => navigate('/dashboard')} className="text-primary hover:underline font-medium">Canal Bids</button>
+          <button onClick={() => navigate('/fleet')} className="text-primary hover:underline font-medium">Fleet Overview</button>
           <ChevronRight className="w-3 h-3 text-muted-foreground" />
           <span className="text-muted-foreground">{canal.name} - Transit SC-4402</span>
         </div>
