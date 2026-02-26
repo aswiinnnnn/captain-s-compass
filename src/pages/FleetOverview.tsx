@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { fleetVessels, getSmartOptions, type FleetVessel } from '@/data/fleetData';
-import { Anchor, Bell, Settings, Search, Filter, Download, Ship, AlertTriangle, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { fleetVessels, getSmartOptions, type FleetVessel, type SmartOption } from '@/data/fleetData';
+import { Anchor, Bell, Settings, Search, Filter, Download, Ship, AlertTriangle, Bot, Send, Sparkles, ChevronDown, ChevronUp, Shield, Clock, DollarSign, Navigation, User, MoreVertical, X } from 'lucide-react';
 import NavTab from '@/components/NavTab';
+import ReactMarkdown from 'react-markdown';
 
 const riskColor = (level: FleetVessel['riskLevel']) => {
   switch (level) {
@@ -24,14 +25,51 @@ const riskBg = (level: FleetVessel['riskLevel']) => {
   }
 };
 
+interface ChatMsg {
+  id: string;
+  role: 'ai' | 'user';
+  content: string;
+  timestamp: Date;
+  smartOptions?: SmartOption[];
+  vesselContext?: FleetVessel;
+}
+
+const tagColor = (tag: SmartOption['tag']) => {
+  switch (tag) {
+    case 'Optimal': return 'bg-success/10 text-success border-success/20';
+    case 'Neutral': return 'bg-primary/10 text-primary border-primary/20';
+    case 'Risky': return 'bg-destructive/10 text-destructive border-destructive/20';
+  }
+};
+
 const FleetOverview = () => {
   const navigate = useNavigate();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
   const [sortBy, setSortBy] = useState<'risk' | 'charter'>('risk');
-  const [panelOpen, setPanelOpen] = useState(false);
 
+  const criticalCount = fleetVessels.filter(v => v.riskLevel === 'Critical').length;
+  const highCount = fleetVessels.filter(v => v.riskLevel === 'High').length;
+  const severeCount = criticalCount + highCount;
   const charteredAtRisk = fleetVessels.filter(v => v.chartered && v.riskScore >= 50).length;
+
+  const [messages, setMessages] = useState<ChatMsg[]>([
+    {
+      id: '1',
+      role: 'ai',
+      content: `**Fleet Alert** — You have **${severeCount} high-severity cases** requiring immediate attention.\n\n` +
+        `- **${criticalCount} Critical** vessels with 48h+ delays\n` +
+        `- **${highCount} High risk** vessels on elevated alert\n` +
+        `- **${charteredAtRisk} chartered vessels** at risk (costing you charter fees while delayed)\n\n` +
+        `The red markers on your map indicate the most urgent cases. Click the warning icon on any vessel to get my risk analysis and recommended actions.\n\n` +
+        `**Priority:** I recommend starting with chartered vessels — they're burning money while idle.`,
+      timestamp: new Date(),
+    },
+  ]);
+  const [chatInput, setChatInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [expandedOption, setExpandedOption] = useState<string | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem('voyageguard_captain');
@@ -41,6 +79,89 @@ const FleetOverview = () => {
   const logout = () => {
     localStorage.removeItem('voyageguard_captain');
     navigate('/login');
+  };
+
+  useEffect(() => {
+    chatScrollRef.current?.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: 'smooth' });
+  }, [messages]);
+
+  const addAIMessage = (content: string, smartOptions?: SmartOption[], vesselContext?: FleetVessel) => {
+    setIsTyping(true);
+    setTimeout(() => {
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        role: 'ai',
+        content,
+        timestamp: new Date(),
+        smartOptions,
+        vesselContext,
+      }]);
+      setIsTyping(false);
+    }, 600 + Math.random() * 800);
+  };
+
+  const handleWarningClick = (vessel: FleetVessel) => {
+    const userMsg: ChatMsg = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: `Analyze risk for ${vessel.name}`,
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, userMsg]);
+
+    const factors = vessel.delayFactors;
+    let analysis = `## ${vessel.name} — Risk Analysis\n\n`;
+    analysis += `**Risk Score:** ${vessel.riskScore}/100 (${vessel.riskLevel})\n`;
+    analysis += `**Delay:** +${vessel.delayHours}h | **Exposure:** $${vessel.financialExposure.toLocaleString()}\n`;
+    if (vessel.chartered) {
+      analysis += `**CHARTERED** — Charter rate: $${vessel.charterRate?.toLocaleString()}/day (bleeding money while delayed)\n`;
+    }
+    analysis += `\n### Risk Factors Detected:\n\n`;
+
+    factors.forEach((f, i) => {
+      const label = f.category === 'weather' ? '[Weather]' : f.category === 'political' ? '[Political]' : f.category === 'port' ? '[Port]' : f.category === 'customs' ? '[Customs]' : f.category === 'client' ? '[Client]' : f.category === 'mechanical' ? '[Mechanical]' : '[Delay]';
+      analysis += `${i + 1}. ${label} **${f.name}** — ${f.hours}h delay\n   ${f.detail}\n\n`;
+    });
+
+    analysis += `\nHere are my **recommended actions** — click any option to understand the reasoning:`;
+
+    const options = getSmartOptions(vessel);
+    addAIMessage(analysis, options, vessel);
+  };
+
+  const handleSmartOptionClick = (option: SmartOption) => {
+    setExpandedOption(expandedOption === option.id ? null : option.id);
+  };
+
+  const handleSendChat = () => {
+    if (!chatInput.trim() || isTyping) return;
+    const userMsg: ChatMsg = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: chatInput,
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, userMsg]);
+    setChatInput('');
+
+    // Simple mock response
+    const lowerInput = chatInput.toLowerCase();
+    let response = '';
+    if (lowerInput.includes('chartered') || lowerInput.includes('charter')) {
+      const chartered = fleetVessels.filter(v => v.chartered);
+      const totalCharter = chartered.reduce((s, v) => s + (v.charterRate || 0), 0);
+      response = `You have **${chartered.length} chartered vessels** in your fleet, costing **$${totalCharter.toLocaleString()}/day** in charter fees.\n\n` +
+        chartered.filter(v => v.riskScore >= 50).map(v => `- **${v.name}** — $${v.charterRate?.toLocaleString()}/day, ${v.riskLevel} risk, +${v.delayHours}h delay`).join('\n') +
+        `\n\nI recommend prioritizing these — every delay day costs you the charter rate on top of demurrage.`;
+    } else if (lowerInput.includes('worst') || lowerInput.includes('critical')) {
+      const critical = fleetVessels.filter(v => v.riskLevel === 'Critical');
+      response = `**${critical.length} vessels** are in critical status:\n\n` +
+        critical.map(v => `- **${v.name}** — Risk ${v.riskScore}/100, +${v.delayHours}h, $${v.financialExposure.toLocaleString()} exposure`).join('\n') +
+        `\n\nClick the warning icon on their map markers for detailed analysis.`;
+    } else {
+      response = `I'm monitoring **${fleetVessels.length} vessels** across global routes. ${severeCount} need immediate attention.\n\nYou can:\n- Click the warning icon on any vessel marker for risk analysis\n- Ask me about specific vessels or risk categories\n- Say "show chartered vessels" for cost prioritization`;
+    }
+    addAIMessage(response);
   };
 
   const sortedVessels = [...fleetVessels].sort((a, b) => {
@@ -89,6 +210,7 @@ const FleetOverview = () => {
         iconAnchor: [18, 18],
       });
 
+      // Name label
       L.marker([vessel.position.lat, vessel.position.lng], {
         icon: L.divIcon({
           className: 'vessel-name-label',
@@ -99,7 +221,7 @@ const FleetOverview = () => {
         interactive: false,
       }).addTo(map);
 
-      L.marker([vessel.position.lat, vessel.position.lng], { icon })
+      const marker = L.marker([vessel.position.lat, vessel.position.lng], { icon })
         .addTo(map)
         .bindTooltip(
           `<div style="min-width:200px;">
@@ -115,14 +237,23 @@ const FleetOverview = () => {
             <div style="margin-top:6px; padding-top:4px; border-top:1px solid #e2e8f0; font-size:9px; color:#64748b;">
               ${vessel.departurePort} → ${vessel.destinationPort} · ETA: ${vessel.eta}
             </div>
+            ${vessel.riskScore >= 40 ? `<div style="margin-top:4px; font-size:9px; color:${color}; font-weight:700;">⚠ Click warning icon for AI risk analysis</div>` : ''}
           </div>`,
           { direction: 'top', offset: [0, -18], className: 'fleet-vessel-tooltip' }
         );
+
+      marker.on('click', () => {
+        if (vessel.riskScore >= 40) {
+          handleWarningClick(vessel);
+        }
+      });
     });
 
     mapInstanceRef.current = map;
     return () => { map.remove(); mapInstanceRef.current = null; };
   }, []);
+
+  const formatTime = (d: Date) => d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
@@ -146,8 +277,9 @@ const FleetOverview = () => {
             <Search className="w-3.5 h-3.5 text-muted-foreground" />
             <input placeholder="Search vessels, ports..." className="bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none w-40" />
           </div>
-          <button className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+          <button className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground relative">
             <Bell className="w-4 h-4" />
+            <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-destructive rounded-full text-[7px] text-destructive-foreground flex items-center justify-center font-bold">{severeCount}</span>
           </button>
           <button className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
             <Settings className="w-4 h-4" />
@@ -156,123 +288,285 @@ const FleetOverview = () => {
         </div>
       </header>
 
-      {/* Full-screen map */}
-      <div className="flex-1 relative min-h-0">
-        <div ref={mapRef} className="w-full h-full" />
+      {/* Main content: Map + Table on left, Chatbot on right */}
+      <div className="flex-1 flex min-h-0 overflow-hidden">
+        {/* Left: Map + Table */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Map */}
+          <div className="flex-1 relative min-h-0">
+            <div ref={mapRef} className="w-full h-full" />
 
-        {/* Risk Legend */}
-        <div className="absolute bottom-4 left-4 z-[1000] bg-card border border-border rounded-xl px-4 py-3 shadow-sm">
-          <div className="text-[10px] font-bold text-foreground tracking-wider mb-2">RISK LEGEND</div>
-          <div className="flex items-center gap-4 text-[11px]">
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-success" /> Low</span>
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-warning" /> Med</span>
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ background: 'hsl(25, 90%, 50%)' }} /> High</span>
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-destructive" /> Critical</span>
-          </div>
-        </div>
-
-        {/* Fleet stats overlay */}
-        <div className="absolute top-4 left-4 z-[1000] flex gap-2">
-          <div className="bg-card border border-border rounded-lg px-3 py-2 shadow-sm">
-            <div className="text-[9px] font-bold text-muted-foreground tracking-wider">FLEET</div>
-            <div className="text-lg font-bold text-foreground">{fleetVessels.length}</div>
-          </div>
-          <div className="bg-card border border-primary/30 rounded-lg px-3 py-2 shadow-sm">
-            <div className="text-[9px] font-bold text-primary tracking-wider">CHARTERED</div>
-            <div className="text-lg font-bold text-primary">{fleetVessels.filter(v => v.chartered).length}</div>
-          </div>
-        </div>
-
-        {/* Toggle button for vessel panel */}
-        {!panelOpen && (
-          <button
-            onClick={() => setPanelOpen(true)}
-            className="absolute top-4 right-4 z-[1000] bg-card border border-border rounded-lg px-3 py-2 shadow-sm flex items-center gap-2 hover:bg-muted transition-colors"
-          >
-            <Ship className="w-4 h-4 text-primary" />
-            <span className="text-xs font-semibold text-foreground">{fleetVessels.length} Vessels</span>
-            <ChevronLeft className="w-3.5 h-3.5 text-muted-foreground" />
-          </button>
-        )}
-
-        {/* Sliding vessel panel from right */}
-        <div
-          className={`absolute top-0 right-0 h-full z-[1001] bg-card border-l border-border shadow-xl transition-transform duration-300 ease-in-out flex flex-col ${
-            panelOpen ? 'translate-x-0' : 'translate-x-full'
-          }`}
-          style={{ width: '380px' }}
-        >
-          {/* Panel header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-            <div>
-              <h2 className="text-sm font-bold text-foreground">Vessels in Transit</h2>
-              <p className="text-[10px] text-muted-foreground">{fleetVessels.length} active · {charteredAtRisk} chartered at risk</p>
+            {/* Risk Legend */}
+            <div className="absolute bottom-4 left-4 z-[1000] bg-card border border-border rounded-xl px-4 py-3 shadow-sm">
+              <div className="text-[10px] font-bold text-foreground tracking-wider mb-2">RISK LEGEND</div>
+              <div className="flex items-center gap-4 text-[11px]">
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-success" /> Low</span>
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-warning" /> Med</span>
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ background: 'hsl(25, 90%, 50%)' }} /> High</span>
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-destructive" /> Critical</span>
+              </div>
+              <div className="mt-2 pt-2 border-t border-border text-[10px] text-muted-foreground flex items-center gap-1.5">
+                <AlertTriangle className="w-3 h-3 text-destructive" /> Click warning icon on vessels for AI risk analysis
+              </div>
             </div>
+
+            {/* Fleet stats overlay */}
+            <div className="absolute top-4 left-4 z-[1000] flex gap-2">
+              <div className="bg-card border border-border rounded-lg px-3 py-2 shadow-sm">
+                <div className="text-[9px] font-bold text-muted-foreground tracking-wider">FLEET</div>
+                <div className="text-lg font-bold text-foreground">{fleetVessels.length}</div>
+              </div>
+              <div className="bg-card border border-destructive/30 rounded-lg px-3 py-2 shadow-sm">
+                <div className="text-[9px] font-bold text-destructive tracking-wider">ALERTS</div>
+                <div className="text-lg font-bold text-destructive">{severeCount}</div>
+              </div>
+              <div className="bg-card border border-primary/30 rounded-lg px-3 py-2 shadow-sm">
+                <div className="text-[9px] font-bold text-primary tracking-wider">CHARTERED</div>
+                <div className="text-lg font-bold text-primary">{fleetVessels.filter(v => v.chartered).length}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="border-t border-border bg-card px-4 py-3 overflow-auto" style={{ maxHeight: '35vh' }}>
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <h2 className="text-sm font-bold text-foreground">Vessels in Transit</h2>
+                <p className="text-[10px] text-muted-foreground">{fleetVessels.length} active · {charteredAtRisk} chartered at risk</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSortBy(sortBy === 'risk' ? 'charter' : 'risk')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-[10px] font-semibold text-foreground hover:bg-muted transition-colors"
+                >
+                  {sortBy === 'risk' ? '↓ Risk' : '★ Charter First'}
+                </button>
+                <button className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-[10px] font-medium text-foreground hover:bg-muted transition-colors">
+                  <Filter className="w-3 h-3" /> Filter
+                </button>
+                <button className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-[10px] font-medium text-foreground hover:bg-muted transition-colors">
+                  <Download className="w-3 h-3" /> Export
+                </button>
+              </div>
+            </div>
+            <table className="w-full text-[11px]">
+              <thead>
+                <tr className="border-b border-border text-muted-foreground text-[9px] tracking-wider uppercase">
+                  <th className="text-left py-2 pr-3 font-semibold">Vessel</th>
+                  <th className="text-left py-2 pr-3 font-semibold">Type</th>
+                  <th className="text-left py-2 pr-3 font-semibold">Route</th>
+                  <th className="text-center py-2 pr-3 font-semibold">Charter</th>
+                  <th className="text-center py-2 pr-3 font-semibold">Speed</th>
+                  <th className="text-center py-2 pr-3 font-semibold">ETA</th>
+                  <th className="text-center py-2 pr-3 font-semibold">Delay</th>
+                  <th className="text-center py-2 pr-3 font-semibold">Exposure</th>
+                  <th className="text-center py-2 font-semibold">Risk</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedVessels.map(v => (
+                  <tr key={v.id} className={`border-b border-border/50 hover:bg-muted/40 transition-colors cursor-pointer ${v.chartered && v.riskScore >= 50 ? 'bg-destructive/[0.03]' : ''}`}
+                    onClick={() => v.riskScore >= 40 ? handleWarningClick(v) : null}
+                  >
+                    <td className="py-2 pr-3">
+                      <div className="font-semibold text-foreground">{v.name}</div>
+                      <div className="text-[9px] text-muted-foreground">IMO: {v.imo}</div>
+                    </td>
+                    <td className="py-2 pr-3 text-muted-foreground">{v.type.split(' ')[0]}</td>
+                    <td className="py-2 pr-3 text-muted-foreground">{v.departurePort.split(' ')[0]} → {v.destinationPort.split(' ')[0]}</td>
+                    <td className="py-2 pr-3 text-center">
+                      {v.chartered ? (
+                        <span className="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">★ ${(v.charterRate! / 1000).toFixed(0)}k/d</span>
+                      ) : (
+                        <span className="text-[9px] text-muted-foreground">Owned</span>
+                      )}
+                    </td>
+                    <td className="py-2 pr-3 text-center font-medium text-foreground">{v.speed}</td>
+                    <td className="py-2 pr-3 text-center text-muted-foreground">{v.eta}</td>
+                    <td className="py-2 pr-3 text-center">
+                      {v.delayHours > 0 ? (
+                        <span className="text-destructive font-bold">+{v.delayHours}h</span>
+                      ) : (
+                        <span className="text-success font-medium">—</span>
+                      )}
+                    </td>
+                    <td className="py-2 pr-3 text-center">
+                      {v.financialExposure > 0 ? (
+                        <span className="font-bold text-foreground">${(v.financialExposure / 1000).toFixed(0)}k</span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className="py-2 text-center">
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${riskBg(v.riskLevel)}`}>
+                        {v.riskScore}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Right: AI Chatbot */}
+        <div className="w-[380px] border-l border-border flex flex-col bg-chat-bg shrink-0">
+          {/* Chat Header */}
+          <div className="px-4 py-3 border-b border-border flex items-center justify-between bg-card">
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => setSortBy(sortBy === 'risk' ? 'charter' : 'risk')}
-                className="flex items-center gap-1 px-2.5 py-1 border border-border rounded-lg text-[10px] font-semibold text-foreground hover:bg-muted transition-colors"
-              >
-                {sortBy === 'risk' ? '↓ Risk' : '★ Charter'}
-              </button>
-              <button
-                onClick={() => setPanelOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Sparkles className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Fleet Intelligence Agent</p>
+                <p className="text-[10px] text-success font-bold uppercase tracking-wider flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                  Monitoring {fleetVessels.length} Vessels
+                </p>
+              </div>
             </div>
+            <button className="text-muted-foreground hover:text-foreground">
+              <MoreVertical className="w-4 h-4" />
+            </button>
           </div>
 
-          {/* Vessel list */}
-          <div className="flex-1 overflow-y-auto">
-            {sortedVessels.map(v => (
-              <div
-                key={v.id}
-                className={`px-4 py-3 border-b border-border/50 hover:bg-muted/40 transition-colors cursor-pointer ${v.chartered && v.riskScore >= 50 ? 'bg-destructive/[0.03]' : ''}`}
-                onClick={() => {
-                  const captainData = {
-                    id: v.id, name: 'Capt. Demo User', shipName: v.name, shipType: v.type,
-                    cargoType: v.cargo, imo: v.imo, currentSpeed: v.speed, heading: v.heading,
-                    draft: v.draft, fuelRemaining: v.fuelRemaining, position: v.position,
-                    eta: v.eta, voyageId: v.voyageId, departurePort: v.departurePort, destinationPort: v.destinationPort,
-                  };
-                  localStorage.setItem('voyageguard_captain', JSON.stringify(captainData));
-                }}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
-                    <Ship className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span className="text-xs font-semibold text-foreground">{v.name}</span>
-                    {v.chartered && <span className="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">★ CHARTER</span>}
+          {/* Chat Messages */}
+          <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 scrollbar-thin">
+            {messages.map(msg => (
+              <div key={msg.id}>
+                <div className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  {msg.role === 'ai' && (
+                    <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0 mt-1">
+                      <Bot className="w-3.5 h-3.5 text-primary" />
+                    </div>
+                  )}
+                  <div className={`max-w-[90%] rounded-xl px-3 py-2 text-[12px] ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-card border border-border text-foreground'}`}>
+                    <div className="prose prose-sm max-w-none [&_p]:mb-1 [&_p]:last:mb-0 [&_ul]:mb-1 [&_h2]:text-sm [&_h2]:mt-1 [&_h2]:mb-1 [&_h3]:text-xs [&_h3]:mt-1">
+                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    </div>
                   </div>
-                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${riskBg(v.riskLevel)}`}>{v.riskScore}</span>
+                  {msg.role === 'user' && (
+                    <div className="w-6 h-6 rounded-md bg-muted flex items-center justify-center shrink-0 mt-1">
+                      <User className="w-3.5 h-3.5 text-muted-foreground" />
+                    </div>
+                  )}
                 </div>
-                <div className="text-[10px] text-muted-foreground ml-5.5">
-                  <span>{v.departurePort.split(' ')[0]} → {v.destinationPort.split(' ')[0]}</span>
-                  <span className="mx-2">·</span>
-                  <span>{v.speed}</span>
-                  <span className="mx-2">·</span>
-                  <span>ETA: {v.eta}</span>
-                </div>
-                {v.delayHours > 0 && (
-                  <div className="flex items-center gap-3 mt-1.5 ml-5.5 text-[10px]">
-                    <span className="text-destructive font-bold">+{v.delayHours}h delay</span>
-                    {v.financialExposure > 0 && <span className="text-foreground font-semibold">${(v.financialExposure / 1000).toFixed(0)}k exposure</span>}
+
+                {/* Smart Options */}
+                {msg.smartOptions && msg.smartOptions.length > 0 && (
+                  <div className="ml-8 mt-2 space-y-2">
+                    {msg.smartOptions.map(opt => (
+                      <div key={opt.id} className={`border rounded-lg overflow-hidden transition-all ${tagColor(opt.tag)}`}>
+                        <button
+                          onClick={() => handleSmartOptionClick(opt)}
+                          className="w-full px-3 py-2 flex items-center justify-between text-left"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${tagColor(opt.tag)}`}>{opt.tag}</span>
+                              <span className="text-[11px] font-semibold">{opt.label}</span>
+                            </div>
+                            <p className="text-[10px] opacity-80 mt-0.5">{opt.description}</p>
+                          </div>
+                          <div className="flex items-center gap-2 ml-2">
+                            <span className="text-[10px] font-bold">{opt.netBenefit}</span>
+                            {expandedOption === opt.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                          </div>
+                        </button>
+                        {expandedOption === opt.id && (
+                          <div className="px-3 pb-3 border-t border-current/10">
+                            <div className="grid grid-cols-3 gap-2 mt-2 mb-2">
+                              <div className="text-center">
+                                <div className="text-[8px] font-bold tracking-wider opacity-60">{opt.costLabel}</div>
+                                <div className="text-[11px] font-bold">{opt.costAmount}</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-[8px] font-bold tracking-wider opacity-60">DEMURRAGE</div>
+                                <div className="text-[11px] font-bold">{opt.demurrageSave}</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-[8px] font-bold tracking-wider opacity-60">NET</div>
+                                <div className="text-[11px] font-bold">{opt.netBenefit}</div>
+                              </div>
+                            </div>
+                            <div className="bg-background/50 rounded-lg p-2 text-[10px] leading-relaxed opacity-90">
+                              <div className="flex items-center gap-1 mb-1 font-bold text-[9px] tracking-wider">
+                                <Sparkles className="w-3 h-3" /> WHY THIS IS SMART
+                              </div>
+                              {opt.reasoning}
+                            </div>
+                            {msg.vesselContext && (
+                              <div className="flex gap-2 mt-2">
+                                <button
+                                  onClick={() => navigate(`/risk/${msg.vesselContext!.id}`)}
+                                  className="flex-1 py-1.5 text-[10px] font-bold rounded-md bg-background/50 hover:bg-background/80 transition-colors text-center flex items-center justify-center gap-1"
+                                >
+                                  <Shield className="w-3 h-3" /> Full Risk Analysis
+                                </button>
+                                <button
+                                  onClick={() => handleExploreVoyage(msg.vesselContext!)}
+                                  className="flex-1 py-1.5 text-[10px] font-bold rounded-md bg-background/50 hover:bg-background/80 transition-colors text-center"
+                                >
+                                  <Ship className="w-3 h-3 inline mr-1" /> Explore Voyage
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
+
+                <p className={`text-[9px] text-muted-foreground mt-1 ${msg.role === 'user' ? 'text-right mr-8' : 'ml-8'}`}>
+                  {formatTime(msg.timestamp)}
+                </p>
               </div>
             ))}
+            {isTyping && (
+              <div className="flex gap-2">
+                <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                  <Bot className="w-3.5 h-3.5 text-primary" />
+                </div>
+                <div className="bg-card border border-border rounded-xl px-3 py-2">
+                  <div className="flex gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-pulse" style={{ animationDelay: '0s' }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-pulse" style={{ animationDelay: '0.3s' }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-pulse" style={{ animationDelay: '0.6s' }} />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Panel footer */}
-          <div className="px-4 py-2.5 border-t border-border flex items-center gap-2 shrink-0">
-            <button className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-[10px] font-medium text-foreground hover:bg-muted transition-colors">
-              <Filter className="w-3 h-3" /> Filter
-            </button>
-            <button className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-[10px] font-medium text-foreground hover:bg-muted transition-colors">
-              <Download className="w-3 h-3" /> Export
-            </button>
+          {/* Quick Actions + Input */}
+          <div className="p-3 border-t border-border bg-card">
+            <div className="flex gap-1.5 mb-2 flex-wrap">
+              {['Show chartered at risk', 'Worst cases?', 'Fleet cost summary'].map(action => (
+                <button
+                  key={action}
+                  onClick={() => { setChatInput(action); }}
+                  className="text-[10px] px-2.5 py-1 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors bg-card font-medium"
+                >
+                  {action}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSendChat()}
+                placeholder="Ask about fleet risks..."
+                className="flex-1 px-3 py-2 bg-muted border border-border rounded-lg text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
+              />
+              <button
+                onClick={handleSendChat}
+                className="px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -315,5 +609,27 @@ const FleetOverview = () => {
     </div>
   );
 };
+
+// Helper to navigate to dashboard with vessel context
+function handleExploreVoyage(vessel: FleetVessel) {
+  const captainData = {
+    id: vessel.id,
+    name: 'Capt. Demo User',
+    shipName: vessel.name,
+    shipType: vessel.type,
+    cargoType: vessel.cargo,
+    imo: vessel.imo,
+    currentSpeed: vessel.speed,
+    heading: vessel.heading,
+    draft: vessel.draft,
+    fuelRemaining: vessel.fuelRemaining,
+    position: vessel.position,
+    eta: vessel.eta,
+    voyageId: vessel.voyageId,
+    departurePort: vessel.departurePort,
+    destinationPort: vessel.destinationPort,
+  };
+  localStorage.setItem('voyageguard_captain', JSON.stringify(captainData));
+}
 
 export default FleetOverview;
