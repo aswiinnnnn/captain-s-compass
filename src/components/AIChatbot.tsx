@@ -1,6 +1,30 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { Bot, Send, User, Sparkles, MoreVertical, Loader2, CheckCircle2, Zap, DollarSign, Clock, Shield, AlertTriangle, Search, BarChart3, TrendingUp, Database, Globe, ArrowRight, XCircle, CalendarClock, Save, Moon, Sun } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import { useState, useRef, useEffect, useCallback } from "react";
+import {
+  Bot,
+  Send,
+  User,
+  Sparkles,
+  MoreVertical,
+  Loader2,
+  CheckCircle2,
+  Zap,
+  DollarSign,
+  Clock,
+  Shield,
+  AlertTriangle,
+  Search,
+  BarChart3,
+  TrendingUp,
+  Database,
+  Globe,
+  ArrowRight,
+  XCircle,
+  CalendarClock,
+  Save,
+  Moon,
+  Sun,
+} from "lucide-react";
+import ReactMarkdown from "react-markdown";
 
 interface AIChatbotProps {
   canalName?: string;
@@ -8,7 +32,7 @@ interface AIChatbotProps {
   onBidSuccess?: (bid: { amount: number; ref: string; canal: string; date: string }) => void;
 }
 
-type ToolStatus = 'running' | 'done';
+type ToolStatus = "running" | "done";
 
 interface ToolUsage {
   name: string;
@@ -19,13 +43,13 @@ interface ToolUsage {
 
 interface ActionButton {
   label: string;
-  variant: 'primary' | 'outline' | 'success' | 'destructive';
+  variant: "primary" | "outline" | "success" | "destructive";
   action: string;
 }
 
 interface AgentMessage {
   id: string;
-  role: 'user' | 'agent' | 'system';
+  role: "user" | "agent" | "system";
   content: string;
   timestamp: Date;
   tools?: ToolUsage[];
@@ -36,20 +60,29 @@ interface AgentMessage {
 }
 
 const TOOL_ICONS: Record<string, React.ReactNode> = {
-  'Market Analysis': <BarChart3 className="w-3 h-3" />,
-  'Queue Scanner': <Search className="w-3 h-3" />,
-  'Price Predictor': <TrendingUp className="w-3 h-3" />,
-  'Risk Engine': <Shield className="w-3 h-3" />,
-  'Bid Optimizer': <DollarSign className="w-3 h-3" />,
-  'Bid Submission': <Zap className="w-3 h-3" />,
-  'API Response': <Globe className="w-3 h-3" />,
-  'Database Query': <Database className="w-3 h-3" />,
-  'Congestion API': <Zap className="w-3 h-3" />,
+  "Market Analysis": <BarChart3 className="w-3 h-3" />,
+  "Queue Scanner": <Search className="w-3 h-3" />,
+  "Price Predictor": <TrendingUp className="w-3 h-3" />,
+  "Risk Engine": <Shield className="w-3 h-3" />,
+  "Bid Optimizer": <DollarSign className="w-3 h-3" />,
+  "Bid Submission": <Zap className="w-3 h-3" />,
+  "API Response": <Globe className="w-3 h-3" />,
+  "Database Query": <Database className="w-3 h-3" />,
+  "Congestion API": <Zap className="w-3 h-3" />,
 };
 
-type BidPhase = 'analysis' | 'ready' | 'submitted' | 'failed_1' | 'failed_2' | 'stop' | 'day_ended' | 'next_day' | 'success';
+type BidPhase =
+  | "analysis"
+  | "ready"
+  | "submitted"
+  | "failed_1"
+  | "failed_2"
+  | "stop"
+  | "day_ended"
+  | "next_day"
+  | "success";
 
-const BID_AMOUNTS = ['$38,500', '$42,200', '$46,800'];
+const BID_AMOUNTS = ["$38,500", "$42,200", "$46,800"];
 
 const getSimDate = (offset: number) => {
   const d = new Date();
@@ -57,13 +90,14 @@ const getSimDate = (offset: number) => {
   return d;
 };
 
-const formatDate = (d: Date) => d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+const formatDate = (d: Date) =>
+  d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
 
-const AIChatbot = ({ canalName = 'Suez Canal', onBidSuccess }: AIChatbotProps) => {
+const AIChatbot = ({ canalName = "Suez Canal", onBidSuccess }: AIChatbotProps) => {
   const [messages, setMessages] = useState<AgentMessage[]>([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [bidPhase, setBidPhase] = useState<BidPhase>('analysis');
+  const [bidPhase, setBidPhase] = useState<BidPhase>("analysis");
   const [bidAttempt, setBidAttempt] = useState(0);
   const [dayOffset, setDayOffset] = useState(0);
   const [currentDate, setCurrentDate] = useState(getSimDate(0));
@@ -71,7 +105,7 @@ const AIChatbot = ({ canalName = 'Suez Canal', onBidSuccess }: AIChatbotProps) =
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
-      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
     }, 50);
   }, []);
 
@@ -80,80 +114,102 @@ const AIChatbot = ({ canalName = 'Suez Canal', onBidSuccess }: AIChatbotProps) =
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  const addAgentMessage = useCallback((
-    scenario: { tools: { name: string; detail: string }[]; content: string; badge?: string; actions?: ActionButton[]; savedBid?: AgentMessage['savedBid'] }
-  ) => {
-    setIsProcessing(true);
-    const msgId = Date.now().toString();
-    const initialTools: ToolUsage[] = scenario.tools.map(t => ({
-      name: t.name,
-      icon: TOOL_ICONS[t.name] || <Zap className="w-3 h-3" />,
-      status: 'running' as ToolStatus,
-      detail: t.detail,
-    }));
+  const addAgentMessage = useCallback(
+    (scenario: {
+      tools: { name: string; detail: string }[];
+      content: string;
+      badge?: string;
+      actions?: ActionButton[];
+      savedBid?: AgentMessage["savedBid"];
+    }) => {
+      setIsProcessing(true);
+      const msgId = Date.now().toString();
+      const initialTools: ToolUsage[] = scenario.tools.map((t) => ({
+        name: t.name,
+        icon: TOOL_ICONS[t.name] || <Zap className="w-3 h-3" />,
+        status: "running" as ToolStatus,
+        detail: t.detail,
+      }));
 
-    setMessages(prev => [...prev, {
-      id: msgId, role: 'agent', content: '', timestamp: new Date(),
-      tools: initialTools, isStreaming: true, badge: scenario.badge,
-    }]);
-    scrollToBottom();
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: msgId,
+          role: "agent",
+          content: "",
+          timestamp: new Date(),
+          tools: initialTools,
+          isStreaming: true,
+          badge: scenario.badge,
+        },
+      ]);
+      scrollToBottom();
 
-    scenario.tools.forEach((_, idx) => {
-      setTimeout(() => {
-        setMessages(prev => prev.map(m => {
-          if (m.id !== msgId) return m;
-          const updatedTools = [...(m.tools || [])];
-          updatedTools[idx] = { ...updatedTools[idx], status: 'done' };
-          return { ...m, tools: updatedTools };
-        }));
-        scrollToBottom();
-      }, 600 + idx * 700);
-    });
-
-    const totalToolTime = 600 + scenario.tools.length * 700 + 300;
-    const words = scenario.content.split(' ');
-    let wordIdx = 0;
-
-    setTimeout(() => {
-      const streamInterval = setInterval(() => {
-        wordIdx += 2;
-        const partial = words.slice(0, Math.min(wordIdx, words.length)).join(' ');
-        setMessages(prev => prev.map(m =>
-          m.id === msgId ? { ...m, content: partial } : m
-        ));
-        scrollToBottom();
-
-        if (wordIdx >= words.length) {
-          clearInterval(streamInterval);
-          setTimeout(() => {
-            setMessages(prev => prev.map(m =>
-              m.id === msgId ? { ...m, isStreaming: false, actions: scenario.actions, savedBid: scenario.savedBid } : m
-            ));
-            setIsProcessing(false);
+      scenario.tools.forEach((_, idx) => {
+        setTimeout(
+          () => {
+            setMessages((prev) =>
+              prev.map((m) => {
+                if (m.id !== msgId) return m;
+                const updatedTools = [...(m.tools || [])];
+                updatedTools[idx] = { ...updatedTools[idx], status: "done" };
+                return { ...m, tools: updatedTools };
+              }),
+            );
             scrollToBottom();
-          }, 200);
-        }
-      }, 40);
-    }, totalToolTime);
-  }, [scrollToBottom]);
+          },
+          600 + idx * 700,
+        );
+      });
+
+      const totalToolTime = 600 + scenario.tools.length * 700 + 300;
+      const words = scenario.content.split(" ");
+      let wordIdx = 0;
+
+      setTimeout(() => {
+        const streamInterval = setInterval(() => {
+          wordIdx += 2;
+          const partial = words.slice(0, Math.min(wordIdx, words.length)).join(" ");
+          setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, content: partial } : m)));
+          scrollToBottom();
+
+          if (wordIdx >= words.length) {
+            clearInterval(streamInterval);
+            setTimeout(() => {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === msgId
+                    ? { ...m, isStreaming: false, actions: scenario.actions, savedBid: scenario.savedBid }
+                    : m,
+                ),
+              );
+              setIsProcessing(false);
+              scrollToBottom();
+            }, 200);
+          }
+        }, 40);
+      }, totalToolTime);
+    },
+    [scrollToBottom],
+  );
 
   // Initial analysis message
   useEffect(() => {
     const t = setTimeout(() => {
       addAgentMessage({
         tools: [
-          { name: 'Market Analysis', detail: 'Scanning 847 recent bids...' },
-          { name: 'Queue Scanner', detail: 'Checking current queue depth...' },
-          { name: 'Price Predictor', detail: 'Calculating safe bid range...' },
+          { name: "Market Analysis", detail: "Scanning 847 recent bids..." },
+          { name: "Queue Scanner", detail: "Checking current queue depth..." },
+          { name: "Price Predictor", detail: "Calculating safe bid range..." },
         ],
-        badge: 'MARKET ANALYSIS',
+        badge: "MARKET ANALYSIS",
         content: `**${canalName} — Transit Bid Analysis**\n\nI've analyzed current market conditions for your transit:\n\n- **Queue depth:** 23 vessels waiting\n- **Current clearing price:** ~$38,500\n- **Bid window closes:** 5h 42m\n- **Recommended safe bid:** **${BID_AMOUNTS[0]}**\n\nThis amount gives you the highest probability of acceptance at the lowest cost. Shall I submit this bid?`,
         actions: [
-          { label: `Place Safe Bid — ${BID_AMOUNTS[0]}`, variant: 'primary', action: 'place_bid' },
-          { label: 'Explain the analysis', variant: 'outline', action: 'explain' },
+          { label: `Place Safe Bid — ${BID_AMOUNTS[0]}`, variant: "primary", action: "place_bid" },
+          { label: "Explain the analysis", variant: "outline", action: "explain" },
         ],
       });
-      setBidPhase('ready');
+      setBidPhase("ready");
     }, 800);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -162,34 +218,37 @@ const AIChatbot = ({ canalName = 'Suez Canal', onBidSuccess }: AIChatbotProps) =
   const handleAction = (action: string) => {
     if (isProcessing) return;
 
-    if (action === 'explain') {
+    if (action === "explain") {
       addAgentMessage({
-        tools: [{ name: 'Risk Engine', detail: 'Running cost-benefit analysis...' }],
+        tools: [{ name: "Risk Engine", detail: "Running cost-benefit analysis..." }],
         content: `**How I calculated the safe bid:**\n\n1. **Historical clearing prices** — Last 30 days median: $36,200\n2. **Current demand surge** — 23 vessels in queue (+35% above normal)\n3. **Time pressure** — Auction closes in <6 hours\n4. **Your vessel profile** — MV Northern Star, standard priority\n\nAt **${BID_AMOUNTS[0]}**, you have ~78% acceptance probability. This balances cost-efficiency with a reasonable chance of success.\n\nReady to submit?`,
-        actions: [
-          { label: `Submit Bid — ${BID_AMOUNTS[0]}`, variant: 'primary', action: 'place_bid' },
-        ],
+        actions: [{ label: `Submit Bid — ${BID_AMOUNTS[0]}`, variant: "primary", action: "place_bid" }],
       });
       return;
     }
 
-    if (action === 'place_bid') {
+    if (action === "place_bid") {
       const attempt = bidAttempt;
       const amount = BID_AMOUNTS[attempt] || BID_AMOUNTS[1];
 
-      setMessages(prev => [...prev, {
-        id: Date.now().toString(), role: 'user',
-        content: `Place my bid at ${amount}`, timestamp: new Date(),
-      }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: "user",
+          content: `Place my bid at ${amount}`,
+          timestamp: new Date(),
+        },
+      ]);
       scrollToBottom();
 
       setTimeout(() => {
         addAgentMessage({
           tools: [
-            { name: 'Bid Submission', detail: `Submitting bid ${amount}...` },
-            { name: 'API Response', detail: 'Waiting for exchange confirmation...' },
+            { name: "Bid Submission", detail: `Submitting bid ${amount}...` },
+            { name: "API Response", detail: "Waiting for exchange confirmation..." },
           ],
-          badge: 'BID SUBMITTED',
+          badge: "BID SUBMITTED",
           content: `**Bid submitted:** ${amount}\n\n- Canal: ${canalName} Northbound\n- Priority tier: Standard\n- Vessel: MV Northern Star\n\n⏳ Awaiting exchange response... This typically takes 2-5 minutes.`,
         });
 
@@ -202,35 +261,35 @@ const AIChatbot = ({ canalName = 'Suez Canal', onBidSuccess }: AIChatbotProps) =
               `Second attempt at ${amount} — **rejected again.** The clearing price climbed to **$44,500** due to 3 new VLCC entries.\n\n⚠️ I've now seen two consecutive rejections with prices escalating rapidly.`,
             ];
             setBidAttempt(attempt + 1);
-            setBidPhase(attempt === 0 ? 'failed_1' : 'failed_2');
+            setBidPhase(attempt === 0 ? "failed_1" : "failed_2");
 
             if (attempt === 0) {
               // First fail — offer retry
               addAgentMessage({
                 tools: [
-                  { name: 'API Response', detail: 'Bid result received...' },
-                  { name: 'Market Analysis', detail: 'Recalculating optimal range...' },
+                  { name: "API Response", detail: "Bid result received..." },
+                  { name: "Market Analysis", detail: "Recalculating optimal range..." },
                 ],
-                badge: 'BID REJECTED',
+                badge: "BID REJECTED",
                 content: `❌ **Bid Failed**\n\n${failReasons[0]}`,
                 actions: [
-                  { label: `Retry at ${nextAmount}`, variant: 'primary', action: 'place_bid' },
-                  { label: 'Stop bidding today', variant: 'destructive', action: 'stop_bidding' },
+                  { label: `Retry at ${nextAmount}`, variant: "primary", action: "place_bid" },
+                  { label: "Stop bidding today", variant: "destructive", action: "stop_bidding" },
                 ],
               });
             } else {
               // Second fail → agent recommends stopping
               addAgentMessage({
                 tools: [
-                  { name: 'API Response', detail: 'Second bid rejected...' },
-                  { name: 'Risk Engine', detail: 'Evaluating continued bidding risk...' },
-                  { name: 'Price Predictor', detail: 'Forecasting tomorrow\'s prices...' },
+                  { name: "API Response", detail: "Second bid rejected..." },
+                  { name: "Risk Engine", detail: "Evaluating continued bidding risk..." },
+                  { name: "Price Predictor", detail: "Forecasting tomorrow's prices..." },
                 ],
-                badge: '⚠️ RECOMMENDATION',
+                badge: "⚠️ RECOMMENDATION",
                 content: `❌ **Second bid rejected.** Clearing price: **$44,500**\n\n**I strongly recommend stopping for today.** Here's why:\n\n- Prices are **artificially inflated** — a large fleet is bulk-booking slots\n- Continuing would push you past **$47k**, which is 25% above fair value\n- Tomorrow's forecast shows prices dropping to **$36k–$40k** range as the bulk booking clears\n- Your vessel can safely wait — no demurrage penalty until 36h from now\n\n**Estimated savings by waiting: $8,000–$12,000**\n\nShall we close today's trading session and resume tomorrow?`,
                 actions: [
-                  { label: 'Agree — end today\'s session', variant: 'success', action: 'wait_tomorrow' },
-                  { label: 'Force bid anyway', variant: 'destructive', action: 'force_bid' },
+                  { label: "Agree — end today's session", variant: "success", action: "wait_tomorrow" },
+                  { label: "Force bid anyway", variant: "destructive", action: "force_bid" },
                 ],
               });
             }
@@ -240,35 +299,31 @@ const AIChatbot = ({ canalName = 'Suez Canal', onBidSuccess }: AIChatbotProps) =
       return;
     }
 
-    if (action === 'stop_bidding' || action === 'wait_tomorrow') {
-      setBidPhase('day_ended');
+    if (action === "stop_bidding" || action === "wait_tomorrow") {
+      setBidPhase("day_ended");
       addAgentMessage({
-        tools: [
-          { name: 'Congestion API', detail: 'Setting overnight monitoring...' },
-        ],
+        tools: [{ name: "Congestion API", detail: "Setting overnight monitoring..." }],
         content: `**Trading session closed for ${formatDate(currentDate)}.**\n\nI'll monitor the market overnight and prepare a fresh analysis.\n\n📊 Overnight forecast:\n- Expected clearing price drop: **-18%**\n- Optimal bid window: **06:00–08:00 UTC tomorrow**\n- Confidence: **High (89%)**\n\n_When you're ready to continue, open the next trading session below._`,
-        actions: [
-          { label: '📅 Open Next Trading Session', variant: 'primary', action: 'open_next_day' },
-        ],
+        actions: [{ label: "📅 End for the day", variant: "primary", action: "open_next_day" }],
       });
       return;
     }
 
-    if (action === 'force_bid') {
+    if (action === "force_bid") {
       addAgentMessage({
-        tools: [{ name: 'Bid Submission', detail: 'Submitting forced bid at $52,000...' }],
+        tools: [{ name: "Bid Submission", detail: "Submitting forced bid at $52,000..." }],
         content: `⚠️ **Proceeding against recommendation.** Bid submitted at **$52,000**.\n\nThis is 35% above the 30-day median. I've logged a risk flag for your records.`,
       });
       return;
     }
 
-    if (action === 'open_next_day') {
+    if (action === "open_next_day") {
       // Transition to next day — clear chat, update date
       const newOffset = dayOffset + 1;
       const newDate = getSimDate(newOffset);
       setDayOffset(newOffset);
       setCurrentDate(newDate);
-      setBidPhase('next_day');
+      setBidPhase("next_day");
       setBidAttempt(0);
 
       // Clear all messages
@@ -276,50 +331,55 @@ const AIChatbot = ({ canalName = 'Suez Canal', onBidSuccess }: AIChatbotProps) =
 
       // Add system date divider then fresh analysis after a brief pause
       setTimeout(() => {
-        setMessages([{
-          id: `date-${newOffset}`,
-          role: 'system',
-          content: formatDate(newDate),
-          timestamp: newDate,
-        }]);
+        setMessages([
+          {
+            id: `date-${newOffset}`,
+            role: "system",
+            content: formatDate(newDate),
+            timestamp: newDate,
+          },
+        ]);
 
         setTimeout(() => {
           addAgentMessage({
             tools: [
-              { name: 'Market Analysis', detail: 'Fresh morning scan...' },
-              { name: 'Queue Scanner', detail: 'Queue dropped overnight...' },
-              { name: 'Price Predictor', detail: 'New price model ready...' },
+              { name: "Market Analysis", detail: "Fresh morning scan..." },
+              { name: "Queue Scanner", detail: "Queue dropped overnight..." },
+              { name: "Price Predictor", detail: "New price model ready..." },
             ],
-            badge: '🌅 NEW SESSION',
+            badge: "🌅 NEW SESSION",
             content: `**Good morning, Captain.** Welcome to trading session for **${formatDate(newDate)}**.\n\nAs predicted, conditions improved significantly overnight.\n\n- **Queue:** Dropped from 23 → 14 vessels\n- **Clearing price:** Down to **$35,800** (−27% from yesterday's peak)\n- **Competition:** The bulk-booking fleet completed their transits\n\nMy recommended bid: **$37,500** — this gives you **94% acceptance probability** and saves you ~$6,700 compared to yesterday's prices.\n\nShall I submit?`,
-            actions: [
-              { label: 'Place Bid — $37,500', variant: 'primary', action: 'final_bid' },
-            ],
+            actions: [{ label: "Place Bid — $37,500", variant: "primary", action: "final_bid" }],
           });
         }, 400);
       }, 200);
       return;
     }
 
-    if (action === 'final_bid') {
-      setMessages(prev => [...prev, {
-        id: Date.now().toString(), role: 'user',
-        content: 'Place my bid at $37,500', timestamp: new Date(),
-      }]);
+    if (action === "final_bid") {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: "user",
+          content: "Place my bid at $37,500",
+          timestamp: new Date(),
+        },
+      ]);
       scrollToBottom();
 
       setTimeout(() => {
         addAgentMessage({
           tools: [
-            { name: 'Bid Submission', detail: 'Submitting bid $37,500...' },
-            { name: 'API Response', detail: 'Waiting for confirmation...' },
+            { name: "Bid Submission", detail: "Submitting bid $37,500..." },
+            { name: "API Response", detail: "Waiting for confirmation..." },
           ],
-          badge: 'BID SUBMITTED',
+          badge: "BID SUBMITTED",
           content: `**Bid submitted:** $37,500\n\n⏳ Awaiting exchange response...`,
         });
 
         setTimeout(() => {
-          setBidPhase('success');
+          setBidPhase("success");
           const ref = `SC-${Math.floor(10000 + Math.random() * 90000)}`;
           const now = new Date();
           const transitDate = formatDate(getSimDate(dayOffset + 1));
@@ -334,17 +394,17 @@ const AIChatbot = ({ canalName = 'Suez Canal', onBidSuccess }: AIChatbotProps) =
 
           addAgentMessage({
             tools: [
-              { name: 'API Response', detail: 'Bid ACCEPTED!' },
-              { name: 'Database Query', detail: 'Saving bid confirmation...' },
+              { name: "API Response", detail: "Bid ACCEPTED!" },
+              { name: "Database Query", detail: "Saving bid confirmation..." },
             ],
-            badge: '🎉 BID ACCEPTED',
+            badge: "🎉 BID ACCEPTED",
             content: `## ✅ Congratulations, Captain!\n\nYour bid has been **accepted** by the ${canalName} Transit Authority.\n\n**Transit Confirmation:**\n- **Amount:** $37,500\n- **Canal:** ${canalName} Northbound\n- **Transit slot:** ${transitDate}, 14:00 UTC\n- **Priority:** Standard\n- **Reference:** ${ref}\n\n**Savings report:**\n- vs. yesterday's market: **−$6,700** saved\n- vs. premium rush: **−$14,500** saved\n\nYour confirmation has been saved. This bid is now reflected in your analytics dashboard.`,
             savedBid: {
-              amount: '$37,500',
+              amount: "$37,500",
               canal: `${canalName} Northbound`,
-              status: 'CONFIRMED',
+              status: "CONFIRMED",
               ref,
-              time: now.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+              time: now.toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
             },
           });
         }, 4500);
@@ -352,11 +412,11 @@ const AIChatbot = ({ canalName = 'Suez Canal', onBidSuccess }: AIChatbotProps) =
       return;
     }
 
-    if (action === 'view_receipt') {
-      const savedMsg = messages.find(m => m.savedBid);
+    if (action === "view_receipt") {
+      const savedMsg = messages.find((m) => m.savedBid);
       if (savedMsg) {
         const el = document.getElementById(`msg-${savedMsg.id}`);
-        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
       }
       return;
     }
@@ -365,31 +425,34 @@ const AIChatbot = ({ canalName = 'Suez Canal', onBidSuccess }: AIChatbotProps) =
   const handleSend = () => {
     if (!input.trim() || isProcessing) return;
     const userMsg: AgentMessage = {
-      id: Date.now().toString(), role: 'user',
-      content: input, timestamp: new Date(),
+      id: Date.now().toString(),
+      role: "user",
+      content: input,
+      timestamp: new Date(),
     };
-    setMessages(prev => [...prev, userMsg]);
-    setInput('');
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
     scrollToBottom();
 
     setTimeout(() => {
       addAgentMessage({
-        tools: [{ name: 'Market Analysis', detail: 'Processing your request...' }],
+        tools: [{ name: "Market Analysis", detail: "Processing your request..." }],
         content: `I understand your question. Based on current ${canalName} market conditions with **23 vessels** in queue, the optimal strategy depends on timing.\n\nWould you like me to proceed with the recommended safe bid?`,
-        actions: bidPhase === 'ready' || bidPhase === 'analysis'
-          ? [{ label: `Place Safe Bid — ${BID_AMOUNTS[0]}`, variant: 'primary' as const, action: 'place_bid' }]
-          : undefined,
+        actions:
+          bidPhase === "ready" || bidPhase === "analysis"
+            ? [{ label: `Place Safe Bid — ${BID_AMOUNTS[0]}`, variant: "primary" as const, action: "place_bid" }]
+            : undefined,
       });
     }, 300);
   };
 
-  const formatTime = (d: Date) => d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const formatTime = (d: Date) => d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
 
   const variantClasses: Record<string, string> = {
-    primary: 'bg-primary text-primary-foreground hover:opacity-90',
-    outline: 'border border-border text-foreground hover:bg-muted',
-    success: 'bg-success text-white hover:opacity-90',
-    destructive: 'bg-destructive text-white hover:opacity-90',
+    primary: "bg-primary text-primary-foreground hover:opacity-90",
+    outline: "border border-border text-foreground hover:bg-muted",
+    success: "bg-success text-white hover:opacity-90",
+    destructive: "bg-destructive text-white hover:opacity-90",
   };
 
   return (
@@ -403,18 +466,16 @@ const AIChatbot = ({ canalName = 'Suez Canal', onBidSuccess }: AIChatbotProps) =
           </div>
           <div>
             <p className="text-sm font-bold text-foreground">AquaMinds Agent</p>
-            <p className="text-[10px] text-muted-foreground font-medium">
-              {formatDate(currentDate)}
-            </p>
+            <p className="text-[10px] text-muted-foreground font-medium">{formatDate(currentDate)}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {bidPhase === 'success' && (
+          {bidPhase === "success" && (
             <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-success/15 text-success border border-success/20">
               Session Complete
             </span>
           )}
-          {bidPhase === 'day_ended' && (
+          {bidPhase === "day_ended" && (
             <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-warning/15 text-warning border border-warning/20 flex items-center gap-1">
               <Moon className="w-2.5 h-2.5" /> Day Closed
             </span>
@@ -427,10 +488,10 @@ const AIChatbot = ({ canalName = 'Suez Canal', onBidSuccess }: AIChatbotProps) =
 
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-thin">
-        {messages.map(msg => (
+        {messages.map((msg) => (
           <div key={msg.id} id={`msg-${msg.id}`}>
             {/* System date divider */}
-            {msg.role === 'system' ? (
+            {msg.role === "system" ? (
               <div className="flex items-center gap-3 my-4">
                 <div className="flex-1 h-px bg-border" />
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full border border-border">
@@ -439,7 +500,7 @@ const AIChatbot = ({ canalName = 'Suez Canal', onBidSuccess }: AIChatbotProps) =
                 </div>
                 <div className="flex-1 h-px bg-border" />
               </div>
-            ) : msg.role === 'user' ? (
+            ) : msg.role === "user" ? (
               <div className="flex gap-2 justify-end">
                 <div className="max-w-[80%] rounded-xl px-3 py-2 text-sm bg-primary text-primary-foreground">
                   {msg.content}
@@ -455,19 +516,26 @@ const AIChatbot = ({ canalName = 'Suez Canal', onBidSuccess }: AIChatbotProps) =
                 </div>
                 <div className="max-w-[90%] space-y-2">
                   {msg.badge && (
-                    <span className={`inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full animate-pulse ${
-                      msg.badge.includes('ACCEPTED') || msg.badge.includes('🎉')
-                        ? 'bg-success/15 text-success border border-success/20'
-                        : msg.badge.includes('REJECTED') || msg.badge.includes('⚠')
-                        ? 'bg-destructive/15 text-destructive border border-destructive/20'
-                        : msg.badge.includes('NEW SESSION')
-                        ? 'bg-primary/15 text-primary border border-primary/20'
-                        : 'bg-warning/15 text-warning border border-warning/20'
-                    }`}>
-                      {msg.badge.includes('REJECTED') ? <XCircle className="w-2.5 h-2.5" /> :
-                       msg.badge.includes('ACCEPTED') || msg.badge.includes('🎉') ? <CheckCircle2 className="w-2.5 h-2.5" /> :
-                       msg.badge.includes('NEW SESSION') ? <Sun className="w-2.5 h-2.5" /> :
-                       <AlertTriangle className="w-2.5 h-2.5" />}
+                    <span
+                      className={`inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full animate-pulse ${
+                        msg.badge.includes("ACCEPTED") || msg.badge.includes("🎉")
+                          ? "bg-success/15 text-success border border-success/20"
+                          : msg.badge.includes("REJECTED") || msg.badge.includes("⚠")
+                            ? "bg-destructive/15 text-destructive border border-destructive/20"
+                            : msg.badge.includes("NEW SESSION")
+                              ? "bg-primary/15 text-primary border border-primary/20"
+                              : "bg-warning/15 text-warning border border-warning/20"
+                      }`}
+                    >
+                      {msg.badge.includes("REJECTED") ? (
+                        <XCircle className="w-2.5 h-2.5" />
+                      ) : msg.badge.includes("ACCEPTED") || msg.badge.includes("🎉") ? (
+                        <CheckCircle2 className="w-2.5 h-2.5" />
+                      ) : msg.badge.includes("NEW SESSION") ? (
+                        <Sun className="w-2.5 h-2.5" />
+                      ) : (
+                        <AlertTriangle className="w-2.5 h-2.5" />
+                      )}
                       {msg.badge}
                     </span>
                   )}
@@ -475,11 +543,14 @@ const AIChatbot = ({ canalName = 'Suez Canal', onBidSuccess }: AIChatbotProps) =
                   {msg.tools && msg.tools.length > 0 && (
                     <div className="space-y-1">
                       {msg.tools.map((tool, i) => (
-                        <div key={i} className="flex items-center gap-2 text-[10px] text-muted-foreground bg-muted/50 rounded-md px-2.5 py-1.5 border border-border/50">
+                        <div
+                          key={i}
+                          className="flex items-center gap-2 text-[10px] text-muted-foreground bg-muted/50 rounded-md px-2.5 py-1.5 border border-border/50"
+                        >
                           <span className="text-primary">{tool.icon}</span>
                           <span className="font-semibold text-foreground">{tool.name}</span>
                           <span className="text-muted-foreground truncate flex-1">{tool.detail}</span>
-                          {tool.status === 'running' ? (
+                          {tool.status === "running" ? (
                             <Loader2 className="w-3 h-3 animate-spin text-primary shrink-0" />
                           ) : (
                             <CheckCircle2 className="w-3 h-3 text-success shrink-0" />
@@ -504,7 +575,9 @@ const AIChatbot = ({ canalName = 'Suez Canal', onBidSuccess }: AIChatbotProps) =
                     <div className="bg-success/5 border-2 border-success/30 rounded-xl p-3 space-y-2">
                       <div className="flex items-center gap-2">
                         <Save className="w-4 h-4 text-success" />
-                        <span className="text-xs font-bold text-success uppercase tracking-wider">Bid Confirmation Saved</span>
+                        <span className="text-xs font-bold text-success uppercase tracking-wider">
+                          Bid Confirmation Saved
+                        </span>
                       </div>
                       <div className="grid grid-cols-2 gap-1.5 text-[11px]">
                         <div className="text-muted-foreground">Amount</div>
@@ -530,9 +603,9 @@ const AIChatbot = ({ canalName = 'Suez Canal', onBidSuccess }: AIChatbotProps) =
                           disabled={isProcessing}
                           className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 disabled:opacity-50 ${variantClasses[action.variant]}`}
                         >
-                          {action.variant === 'primary' && <Zap className="w-3 h-3" />}
-                          {action.variant === 'success' && <CheckCircle2 className="w-3 h-3" />}
-                          {action.variant === 'destructive' && <AlertTriangle className="w-3 h-3" />}
+                          {action.variant === "primary" && <Zap className="w-3 h-3" />}
+                          {action.variant === "success" && <CheckCircle2 className="w-3 h-3" />}
+                          {action.variant === "destructive" && <AlertTriangle className="w-3 h-3" />}
                           {action.label}
                           <ArrowRight className="w-3 h-3" />
                         </button>
@@ -547,7 +620,7 @@ const AIChatbot = ({ canalName = 'Suez Canal', onBidSuccess }: AIChatbotProps) =
           </div>
         ))}
 
-        {isProcessing && messages[messages.length - 1]?.role === 'user' && (
+        {isProcessing && messages[messages.length - 1]?.role === "user" && (
           <div className="flex gap-2">
             <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
               <Bot className="w-3.5 h-3.5 text-primary" />
@@ -565,15 +638,15 @@ const AIChatbot = ({ canalName = 'Suez Canal', onBidSuccess }: AIChatbotProps) =
         <div className="flex gap-2">
           <input
             value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSend()}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSend()}
             placeholder="Ask the agent anything..."
-            disabled={isProcessing || bidPhase === 'day_ended'}
+            disabled={isProcessing || bidPhase === "day_ended"}
             className="flex-1 px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:opacity-50"
           />
           <button
             onClick={handleSend}
-            disabled={isProcessing || bidPhase === 'day_ended'}
+            disabled={isProcessing || bidPhase === "day_ended"}
             className="px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             <Send className="w-4 h-4" />
