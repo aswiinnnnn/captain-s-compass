@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { canalsPorts, previousBids, bidFactors } from '@/data/mockData';
 import AIChatbot from '@/components/AIChatbot';
+import NavTab from '@/components/NavTab';
 import { Download, Zap, ChevronRight, ArrowUp, ArrowDown, Minus, TrendingUp, AlertTriangle, Clock, Users, Anchor, Timer, TriangleAlert, DollarSign, Sparkles } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea } from 'recharts';
 
@@ -140,33 +141,45 @@ const BiddingDetail = () => {
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
-      {/* Header */}
-      <header className="border-b border-border px-6 py-3 bg-card shrink-0">
-        <div className="flex items-center gap-2 text-xs text-primary mb-1">
-          <button onClick={() => navigate('/dashboard')} className="hover:underline font-medium">Canal Bids</button>
+      {/* Nav Bar */}
+      <header className="h-14 border-b border-border flex items-center justify-between px-6 bg-card shrink-0">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+              <Anchor className="w-4 h-4 text-primary-foreground" />
+            </div>
+            <span className="font-bold text-foreground text-base">AquaMinds</span>
+          </div>
+          <nav className="hidden md:flex items-center gap-1">
+            <NavTab onClick={() => navigate('/fleet')}>Fleet Overview</NavTab>
+            <NavTab onClick={() => navigate('/dashboard')}>Bidding Hub</NavTab>
+            <NavTab onClick={() => navigate('/voyage-planner')}>Voyage Planner</NavTab>
+          </nav>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <Timer className="w-3.5 h-3.5 text-destructive" />
+            <span className="text-xs font-bold text-destructive font-mono">{fmtDeadline(deadline)}</span>
+            <span className="text-[9px] text-destructive/70 uppercase">Auction Closes</span>
+          </div>
+          <button className="flex items-center gap-2 px-3 py-1.5 border border-border rounded-lg text-xs font-medium text-foreground hover:bg-muted transition-colors">
+            <Download className="w-3.5 h-3.5" /> Report
+          </button>
+          <button className="flex items-center gap-2 px-3 py-1.5 bg-foreground text-background rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity">
+            <Zap className="w-3.5 h-3.5" /> Auto-Bid
+          </button>
+        </div>
+      </header>
+
+      {/* Sub-header breadcrumb */}
+      <div className="border-b border-border px-6 py-2 bg-card shrink-0">
+        <div className="flex items-center gap-2 text-xs">
+          <button onClick={() => navigate('/dashboard')} className="text-primary hover:underline font-medium">Canal Bids</button>
           <ChevronRight className="w-3 h-3 text-muted-foreground" />
           <span className="text-muted-foreground">{canal.name} - Transit SC-4402</span>
         </div>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-foreground">{canal.name} Transit Bidding</h1>
-            <p className="text-xs text-muted-foreground">Vessel: MV Northern Star | ETA: Oct 24, 08:00 UTC</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/10 border border-destructive/20 rounded-lg">
-              <Timer className="w-3.5 h-3.5 text-destructive" />
-              <span className="text-xs font-bold text-destructive font-mono">{fmtDeadline(deadline)}</span>
-              <span className="text-[9px] text-destructive/70 uppercase">Auction Closes</span>
-            </div>
-            <button className="flex items-center gap-2 px-3 py-1.5 border border-border rounded-lg text-xs font-medium text-foreground hover:bg-muted transition-colors">
-              <Download className="w-3.5 h-3.5" /> Report
-            </button>
-            <button className="flex items-center gap-2 px-3 py-1.5 bg-foreground text-background rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity">
-              <Zap className="w-3.5 h-3.5" /> Auto-Bid
-            </button>
-          </div>
-        </div>
-      </header>
+        <p className="text-xs text-muted-foreground mt-0.5">Vessel: MV Northern Star | ETA: Oct 24, 08:00 UTC</p>
+      </div>
 
       <div className="flex flex-1 min-h-0">
         {/* LEFT - Scrollable analytics */}

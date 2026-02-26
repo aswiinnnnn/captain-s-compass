@@ -4,7 +4,6 @@ import type { Captain } from '@/data/mockData';
 import VoyageMap from '@/components/VoyageMap';
 import ShipInfoPanel from '@/components/ShipInfoPanel';
 import CanalPortCards from '@/components/CanalPortCards';
-import AIChatbot from '@/components/AIChatbot';
 import { Anchor, Bell, Settings, Search, MapPin } from 'lucide-react';
 import NavTab from '@/components/NavTab';
 
@@ -71,21 +70,13 @@ const Dashboard = () => {
         </div>
       </header>
 
-      {/* Main content */}
-      <div className="flex flex-1 min-h-0">
-        {/* Left panel - Map & Cards */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
-          <div className="relative">
-            <VoyageMap shipPosition={captain.position} onCanalClick={cp => navigate(`/bidding/${cp.id}`)} />
-            <ShipInfoPanel captain={captain} />
-          </div>
-          <CanalPortCards />
+      {/* Main content - full width */}
+      <div className="flex-1 overflow-y-auto p-5 space-y-5 min-h-0">
+        <div className="relative">
+          <VoyageMap shipPosition={captain.position} onCanalClick={cp => navigate(`/bidding/${cp.id}`)} />
+          <ShipInfoPanel captain={captain} />
         </div>
-
-        {/* Right panel - Persistent Chatbot (fixed height) */}
-        <div className="hidden lg:flex w-[30%] max-w-[380px] min-w-[320px] border-l border-border flex-col h-full overflow-hidden shrink-0">
-          <AIChatbot />
-        </div>
+        <CanalPortCards />
       </div>
 
       {/* Status Bar */}
