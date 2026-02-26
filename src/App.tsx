@@ -10,6 +10,7 @@ import FleetOverview from "./pages/FleetOverview";
 import BiddingDetail from "./pages/BiddingDetail";
 import RiskAnalysis from "./pages/RiskAnalysis";
 import VoyagePlanner from "./pages/VoyagePlanner";
+import PortIntelligence from "./pages/PortIntelligence";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/bidding/:id" element={<BiddingDetail />} />
             <Route path="/risk/:id" element={<RiskAnalysis />} />
             <Route path="/voyage-planner" element={<VoyagePlanner />} />
+            <Route path="/port-intelligence" element={<PortIntelligence />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

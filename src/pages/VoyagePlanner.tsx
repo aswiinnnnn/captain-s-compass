@@ -222,7 +222,7 @@ const VoyagePlanner = () => {
           </div>
           <nav className="hidden md:flex items-center gap-1">
             <NavTab onClick={() => navigate('/fleet')}>Fleet Overview</NavTab>
-            <NavTab onClick={() => navigate('/fleet')}>Fleet Overview</NavTab>
+            <NavTab onClick={() => navigate('/port-intelligence')}>Port Intelligence</NavTab>
             <NavTab active>Voyage Planner</NavTab>
           </nav>
         </div>
