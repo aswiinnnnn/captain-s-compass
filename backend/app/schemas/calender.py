@@ -1,110 +1,103 @@
-"""Calendar event schemas."""
+"""Calendar event schemas.
+
+Field names use camelCase to match the frontend contract.
+``validation_alias`` lets Pydantic populate from the snake_case ORM attributes.
+``populate_by_name=True`` allows population via either the field name or the alias.
+"""
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
-
-# ============================================================================
-# Shared properties
-# ============================================================================
-# (None specific to calendar events)
+# ── Allowed literal values ──────────────────────────────────────────────────
+EventType = Literal["holiday", "weather", "strike", "war_risk", "customs_delay"]
+Severity = Literal["Low", "Moderate", "High", "Critical"]
 
 
 # ============================================================================
 # Properties to receive via API on creation
 # ============================================================================
 class EventCreateSchema(BaseModel):
-    """Calendar event creation schema."""
+    """Calendar event creation schema (frontend → backend)."""
 
-    type: str  # 'holiday' | 'weather' | 'strike' | 'war_risk' | 'customs_delay'
+    model_config = ConfigDict(populate_by_name=True)
+
+    type: EventType
     title: str
     description: str
     detail: str
-    portId: Optional[str] = None
+    portId: Optional[str] = Field(None, validation_alias="port_id")
     region: str
-    startDate: str
-    endDate: str
-    severity: str  # 'Low' | 'Moderate' | 'High' | 'Critical'
+    startDate: str = Field(..., validation_alias="start_date")
+    endDate: str = Field(..., validation_alias="end_date")
+    severity: Severity
 
-
-# ============================================================================
-# Properties to receive in DB on creation
-# ============================================================================
-# (Covered in EventCreateSchema)
+    def to_db_dict(self, *, event_id: str) -> dict:
+        """Return a dict keyed with DB column names, suitable for ORM creation."""
+        return {
+            "id": event_id,
+            "type": self.type,
+            "title": self.title,
+            "description": self.description,
+            "detail": self.detail,
+            "port_id": self.portId,
+            "region": self.region,
+            "start_date": self.startDate,
+            "end_date": self.endDate,
+            "severity": self.severity,
+        }
 
 
 # ============================================================================
 # Properties to receive via API on update
 # ============================================================================
 class EventUpdateSchema(BaseModel):
-    """Calendar event update schema."""
+    """Calendar event update schema (partial)."""
 
-    type: Optional[str] = None
+    model_config = ConfigDict(populate_by_name=True)
+
+    type: Optional[EventType] = None
     title: Optional[str] = None
     description: Optional[str] = None
     detail: Optional[str] = None
-    portId: Optional[str] = None
+    portId: Optional[str] = Field(None, validation_alias="port_id")
     region: Optional[str] = None
-    startDate: Optional[str] = None
-    endDate: Optional[str] = None
-    severity: Optional[str] = None
+    startDate: Optional[str] = Field(None, validation_alias="start_date")
+    endDate: Optional[str] = Field(None, validation_alias="end_date")
+    severity: Optional[Severity] = None
 
 
 # ============================================================================
-# Properties to receive in DB on update
-# ============================================================================
-# (Covered in EventUpdateSchema)
-
-
-# ============================================================================
-# Additional properties to return via API
+# Response schema — returned to the frontend
 # ============================================================================
 class CalendarEventSchema(BaseModel):
-    """Calendar event response with all properties."""
+    """Calendar event response with all properties.
+
+    * ``from_attributes=True`` enables ``model_validate(orm_obj)``.
+    * ``validation_alias`` maps snake_case ORM attributes → camelCase fields.
+    """
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: str
     type: str
     title: str
     description: str
     detail: str
-    portId: Optional[str] = None
+    portId: Optional[str] = Field(None, validation_alias="port_id")
     region: str
-    startDate: str
-    endDate: str
+    startDate: str = Field(..., validation_alias="start_date")
+    endDate: str = Field(..., validation_alias="end_date")
     severity: str
 
 
 # ============================================================================
-# Additional properties stored in DB
+# Sync result schema
 # ============================================================================
-# (Covered in CalendarEventSchema)
+class SyncResultSchema(BaseModel):
+    """Result of a provider sync operation."""
 
-
-# ============================================================================
-# Property for pagination
-# ============================================================================
-# Not applicable for calendar event endpoints
-
-
-# ============================================================================
-# Schema to get from the DB
-# ============================================================================
-class CalendarEventInDBBase(BaseModel):
-    """Calendar event base model from DB."""
-
-    id: str
-    type: str
-    title: str
-    description: str
-    detail: str
-    portId: Optional[str] = None
-    region: str
-    startDate: str
-    endDate: str
-    severity: str
-
-    class Config:
-        from_attributes = True
+    synced: int
+    message: str
