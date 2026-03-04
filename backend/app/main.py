@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, bidding, chat, fleet, health, marine, ports, voyage
+from app.api.api import api_router
 from app.config import settings
 
 app = FastAPI(
@@ -25,12 +25,5 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register routers under /api prefix
-app.include_router(health.router, prefix="/api")
-app.include_router(auth.router, prefix="/api")
-app.include_router(fleet.router, prefix="/api")
-app.include_router(bidding.router, prefix="/api")
-app.include_router(voyage.router, prefix="/api")
-app.include_router(ports.router, prefix="/api")
-app.include_router(chat.router, prefix="/api")
-app.include_router(marine.router, prefix="/api")
+# Register API router
+app.include_router(api_router, prefix="/api")

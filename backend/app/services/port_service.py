@@ -2,23 +2,22 @@
 
 from __future__ import annotations
 
-from app.providers.registry import get_port_provider
+# from app.providers.registry import get_port_provider
 
 
 def list_ports() -> list[dict]:
-    return get_port_provider().get_ports()
+    ...
 
 
 def get_port(port_id: str) -> dict | None:
-    return get_port_provider().get_port(port_id)
+    ...
 
 
 def list_events(port_id: str | None = None, event_type: str | None = None) -> list[dict]:
-    return get_port_provider().get_events(port_id=port_id, event_type=event_type)
-
+    ...
 
 def list_risk_zones() -> list[dict]:
-    return get_port_provider().get_risk_zones()
+    ...
 
 
 def compute_risk_score(port_id: str) -> int:
@@ -37,7 +36,7 @@ def compute_risk_score(port_id: str) -> int:
             else:
                 score += 5
 
-    port = get_port_provider().get_port(port_id)
+    port = None
     if port:
         level = port.get("congestionLevel", "")
         if level == "Critical":

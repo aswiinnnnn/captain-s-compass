@@ -9,9 +9,11 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     DATA_MODE: str = "mock"  # "mock" or "live"
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/captains_compass"
-    SECRET_KEY: str = "dev-secret-key-change-in-production"
-    CORS_ORIGINS: str = "http://localhost:8080"
+    SQLALCHEMY_DATABASE_URI: str
+    SECRET_KEY: str
+    CORS_ORIGINS: str
+    BACKEND_DB_POOL_SIZE: int
+    BACKEND_DB_MAX_OVERFLOW: int
 
     @property
     def cors_origin_list(self) -> list[str]:

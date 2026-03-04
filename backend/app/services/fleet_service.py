@@ -2,21 +2,18 @@
 
 from __future__ import annotations
 
-from app.providers.registry import get_fleet_provider
+# from app.providers.registry import get_fleet_provider
 
 
 def list_vessels() -> list[dict]:
-    return get_fleet_provider().get_vessels()
+    ...
 
 
 def get_vessel(vessel_id: str) -> dict | None:
-    return get_fleet_provider().get_vessel(vessel_id)
-
+    ...
 
 def get_vessel_route(vessel_id: str) -> list[list[float]] | None:
-    return get_fleet_provider().get_vessel_route(vessel_id)
-
-
+    ...
 def get_smart_options(vessel: dict) -> list[dict]:
     """Port of frontend's getSmartOptions logic."""
     opts: list[dict] = []
