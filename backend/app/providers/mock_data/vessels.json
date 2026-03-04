@@ -1,0 +1,37 @@
+[
+    {
+        "id": "sally-brown",
+        "name": "Sally Brown",
+        "type": "Container Ship",
+        "draft": 10.4,
+        "imo": "9345100"
+    },
+    {
+        "id": "nordic-star",
+        "name": "Nordic Star",
+        "type": "Bulk Carrier",
+        "draft": 12.8,
+        "imo": "9456200"
+    },
+    {
+        "id": "pacific-titan",
+        "name": "Pacific Titan",
+        "type": "Oil Tanker (VLCC)",
+        "draft": 20.1,
+        "imo": "9567300"
+    },
+    {
+        "id": "crest-mariner",
+        "name": "Crest Mariner",
+        "type": "Container Ship",
+        "draft": 11.6,
+        "imo": "9678400"
+    },
+    {
+        "id": "iron-duke",
+        "name": "Iron Duke",
+        "type": "Capesize Bulk",
+        "draft": 17.5,
+        "imo": "9789500"
+    }
+]

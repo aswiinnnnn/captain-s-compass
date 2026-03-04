@@ -1,0 +1,146 @@
+[
+    {
+        "id": "rotterdam",
+        "name": "Rotterdam",
+        "country": "NL",
+        "code": "NLRTM",
+        "lat": 51.9,
+        "lng": 4.5,
+        "variants": [
+            "Inbound",
+            "Outbound"
+        ]
+    },
+    {
+        "id": "hamburg",
+        "name": "Hamburg",
+        "country": "DE",
+        "code": "DEHAM",
+        "lat": 53.55,
+        "lng": 9.99,
+        "variants": [
+            "Inbound",
+            "Outbound"
+        ]
+    },
+    {
+        "id": "antwerp",
+        "name": "Antwerp",
+        "country": "BE",
+        "code": "BEANR",
+        "lat": 51.23,
+        "lng": 4.4,
+        "variants": [
+            "Inbound",
+            "Outbound"
+        ]
+    },
+    {
+        "id": "singapore",
+        "name": "Singapore",
+        "country": "SG",
+        "code": "SGSIN",
+        "lat": 1.26,
+        "lng": 103.84,
+        "variants": [
+            "Inbound",
+            "Outbound"
+        ]
+    },
+    {
+        "id": "shanghai",
+        "name": "Shanghai",
+        "country": "CN",
+        "code": "CNSHA",
+        "lat": 31.23,
+        "lng": 121.47,
+        "variants": [
+            "Inbound",
+            "Outbound"
+        ]
+    },
+    {
+        "id": "felixstowe",
+        "name": "Felixstowe",
+        "country": "GB",
+        "code": "GBFXT",
+        "lat": 51.96,
+        "lng": 1.35,
+        "variants": [
+            "Inbound",
+            "Outbound"
+        ]
+    },
+    {
+        "id": "newyork",
+        "name": "New York / New Jersey",
+        "country": "US",
+        "code": "USNYC",
+        "lat": 40.68,
+        "lng": -74.04,
+        "variants": [
+            "Inbound",
+            "Outbound"
+        ]
+    },
+    {
+        "id": "longbeach",
+        "name": "Long Beach",
+        "country": "US",
+        "code": "USLGB",
+        "lat": 33.77,
+        "lng": -118.19,
+        "variants": [
+            "Inbound",
+            "Outbound"
+        ]
+    },
+    {
+        "id": "yokohama",
+        "name": "Yokohama",
+        "country": "JP",
+        "code": "JPYOK",
+        "lat": 35.44,
+        "lng": 139.64,
+        "variants": [
+            "Inbound",
+            "Outbound"
+        ]
+    },
+    {
+        "id": "mumbai",
+        "name": "Mumbai (JNPT)",
+        "country": "IN",
+        "code": "INNSA",
+        "lat": 18.95,
+        "lng": 72.95,
+        "variants": [
+            "Inbound",
+            "Outbound"
+        ]
+    },
+    {
+        "id": "santos",
+        "name": "Santos",
+        "country": "BR",
+        "code": "BRSSZ",
+        "lat": -23.96,
+        "lng": -46.3,
+        "variants": [
+            "Inbound",
+            "Outbound"
+        ]
+    },
+    {
+        "id": "busan",
+        "name": "Busan",
+        "country": "KR",
+        "code": "KRPUS",
+        "lat": 35.1,
+        "lng": 129.04,
+        "variants": [
+            "Inbound",
+            "Outbound"
+        ]
+    }
+]

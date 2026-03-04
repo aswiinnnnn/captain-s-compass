@@ -1,0 +1,46 @@
+[
+    {
+        "id": "captain-a",
+        "name": "Capt. Jameson Miller",
+        "email": "captain.a@voyageguard.com",
+        "password": "demo123",
+        "shipName": "MV Atlantic Star",
+        "shipType": "Container Ship",
+        "cargoType": "Mixed Containers (TEU: 4,200)",
+        "imo": "IMO 9832741",
+        "currentSpeed": "18.4 knots",
+        "heading": "092° ESE",
+        "draft": "12.8m",
+        "fuelRemaining": "68%",
+        "position": {
+            "lat": 35.5,
+            "lng": 12.5
+        },
+        "eta": "14h 32m",
+        "voyageId": "VYG-2025-0847",
+        "departurePort": "Algeciras, Spain",
+        "destinationPort": "Port Said, Egypt"
+    },
+    {
+        "id": "captain-b",
+        "name": "Capt. Elena Vasquez",
+        "email": "captain.b@voyageguard.com",
+        "password": "demo123",
+        "shipName": "MT Crimson Tide",
+        "shipType": "Oil Tanker (VLCC)",
+        "cargoType": "Crude Oil (DWT: 320,000)",
+        "imo": "IMO 9741582",
+        "currentSpeed": "14.2 knots",
+        "heading": "145° SE",
+        "draft": "21.5m",
+        "fuelRemaining": "54%",
+        "position": {
+            "lat": 24.5,
+            "lng": 58.0
+        },
+        "eta": "22h 15m",
+        "voyageId": "VYG-2025-0912",
+        "departurePort": "Fujairah, UAE",
+        "destinationPort": "Rotterdam, Netherlands"
+    }
+]

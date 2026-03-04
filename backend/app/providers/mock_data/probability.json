@@ -1,0 +1,50 @@
+[
+    {
+        "bid": 30000,
+        "probability": 3
+    },
+    {
+        "bid": 33000,
+        "probability": 8
+    },
+    {
+        "bid": 36000,
+        "probability": 18
+    },
+    {
+        "bid": 39000,
+        "probability": 32
+    },
+    {
+        "bid": 42000,
+        "probability": 52
+    },
+    {
+        "bid": 44000,
+        "probability": 68
+    },
+    {
+        "bid": 45500,
+        "probability": 78
+    },
+    {
+        "bid": 48000,
+        "probability": 88
+    },
+    {
+        "bid": 50000,
+        "probability": 93
+    },
+    {
+        "bid": 54000,
+        "probability": 97
+    },
+    {
+        "bid": 58000,
+        "probability": 99
+    },
+    {
+        "bid": 60000,
+        "probability": 99.5
+    }
+]

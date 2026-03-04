@@ -1,0 +1,44 @@
+[
+    {
+        "time": "Oct 22, 14:30",
+        "amount": 41500,
+        "result": "Lost",
+        "clearingPrice": 43200,
+        "priority": "Standard"
+    },
+    {
+        "time": "Oct 21, 09:15",
+        "amount": 44200,
+        "result": "Won",
+        "clearingPrice": 42800,
+        "priority": "High"
+    },
+    {
+        "time": "Oct 19, 18:45",
+        "amount": 39800,
+        "result": "Expired",
+        "clearingPrice": 41000,
+        "priority": "Eco"
+    },
+    {
+        "time": "Oct 18, 06:00",
+        "amount": 46100,
+        "result": "Won",
+        "clearingPrice": 43500,
+        "priority": "Standard"
+    },
+    {
+        "time": "Oct 16, 11:30",
+        "amount": 38200,
+        "result": "Lost",
+        "clearingPrice": 42100,
+        "priority": "Eco"
+    },
+    {
+        "time": "Oct 14, 15:00",
+        "amount": 45800,
+        "result": "Won",
+        "clearingPrice": 44200,
+        "priority": "High"
+    }
+]
