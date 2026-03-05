@@ -2,10 +2,15 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet-velocity';
 import { fleetVessels, vesselRoutes, type FleetVessel } from '@/data/fleetData';
 import { canalsPorts } from '@/data/mockData';
-import { Anchor, Bell, Settings, Search, Pin, PinOff, ArrowLeft, Ship, MapPin, Clock, Fuel, CloudRain, Shield, Navigation } from 'lucide-react';
+import { Anchor, Bell, Settings, Search, Pin, PinOff, ArrowLeft, Ship, MapPin, Clock, Fuel, CloudRain, Shield, Navigation, Wind, Thermometer, Droplets, Crosshair } from 'lucide-react';
 import NavTab from '@/components/NavTab';
+import { useMapWeather } from '@/hooks/useMapWeather';
+import type { WeatherPoint } from '@/hooks/useMapWeather';
+import { createTemperatureLayer, getTemperatureLegendGradient, TEMP_LEGEND_LABELS } from '@/lib/mapLayers/temperatureLayer';
+import { createPrecipitationLayer, PRECIP_LEGEND_BINS } from '@/lib/mapLayers/precipitationLayer';
 
 const SHIP_BLUE = 'hsl(224, 76%, 48%)';
 const CHARTER_GOLD = 'hsl(45, 93%, 47%)';
@@ -27,6 +32,19 @@ const FleetOverview = () => {
   const fleetLayerRef = useRef<L.LayerGroup | null>(null);
   const vesselLayerRef = useRef<L.LayerGroup | null>(null);
   const aisLayerRef = useRef<L.LayerGroup | null>(null);
+
+  // Weather overlay refs + state
+  const windLayerRef = useRef<L.Layer | null>(null);
+  const tempLayerRef = useRef<L.LayerGroup | null>(null);
+  const rainLayerRef = useRef<L.LayerGroup | null>(null);
+  const [showWind, setShowWind] = useState(false);
+  const [showTemp, setShowTemp] = useState(false);
+  const [showRain, setShowRain] = useState(false);
+  const [showContours, setShowContours] = useState(true);
+  const [showStormEdges, setShowStormEdges] = useState(true);
+  const { data: weatherData } = useMapWeather();
+  const [inspectMode, setInspectMode] = useState<'wind' | 'temp' | 'rain' | null>(null);
+  const [hoverInfo, setHoverInfo] = useState<{ x: number; y: number; label: string; value: string } | null>(null);
 
   const [selectedVessel, setSelectedVessel] = useState<FleetVessel | null>(null);
   const [vesselPanelShow, setVesselPanelShow] = useState(false);
@@ -252,6 +270,168 @@ const FleetOverview = () => {
     mapInstanceRef.current = map;
     return () => { map.remove(); mapInstanceRef.current = null; };
   }, [aisShips]);
+
+  // ─── Weather overlay management ───
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !weatherData) return;
+
+    // WIND layer (leaflet-velocity)
+    if (showWind && weatherData.wind) {
+      if (!windLayerRef.current) {
+        const vl = (L as any).velocityLayer({
+          displayValues: false,
+          data: weatherData.wind,
+          maxVelocity: 70,
+          velocityScale: 0.008,
+          colorScale: [
+            'rgba(36,104,180,0.4)', 'rgba(60,157,194,0.5)',
+            'rgba(128,205,193,0.5)', 'rgba(151,218,168,0.5)',
+            'rgba(198,231,181,0.5)', 'rgba(238,247,217,0.5)',
+            'rgba(255,238,159,0.6)', 'rgba(252,217,125,0.6)',
+            'rgba(255,182,100,0.6)', 'rgba(252,150,75,0.7)',
+            'rgba(250,112,52,0.7)', 'rgba(245,64,32,0.7)',
+            'rgba(237,45,28,0.8)', 'rgba(220,24,32,0.8)',
+          ],
+          lineWidth: 3,
+          particleAge: 60,
+          particleMultiplier: 0.004,
+          frameRate: 20,
+          opacity: 0.9,
+        });
+        vl.addTo(map);
+        windLayerRef.current = vl;
+      }
+    } else if (windLayerRef.current) {
+      map.removeLayer(windLayerRef.current);
+      windLayerRef.current = null;
+    }
+
+    // TEMPERATURE layer (smooth canvas raster)
+    if (showTemp && weatherData.temperature.length > 0) {
+      // Recreate when contour toggle changes
+      if (tempLayerRef.current) {
+        map.removeLayer(tempLayerRef.current as any);
+        tempLayerRef.current = null;
+      }
+      const tl = createTemperatureLayer(weatherData.temperature, { showContours, opacity: 0.28 });
+      tl.addTo(map);
+      tempLayerRef.current = tl as any;
+    } else if (tempLayerRef.current) {
+      map.removeLayer(tempLayerRef.current as any);
+      tempLayerRef.current = null;
+    }
+
+    // PRECIPITATION layer (canvas raster with storm edges)
+    if (showRain && weatherData.temperature.length > 0) {
+      if (rainLayerRef.current) {
+        map.removeLayer(rainLayerRef.current as any);
+        rainLayerRef.current = null;
+      }
+      const pl = createPrecipitationLayer(
+        weatherData.precipitation,
+        weatherData.temperature,
+        { showStormEdges }
+      );
+      pl.addTo(map);
+      rainLayerRef.current = pl as any;
+    } else if (rainLayerRef.current) {
+      map.removeLayer(rainLayerRef.current as any);
+      rainLayerRef.current = null;
+    }
+  }, [showWind, showTemp, showRain, showContours, showStormEdges, weatherData]);
+
+  // ─── Hover inspect mode ───
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !weatherData || !inspectMode) {
+      setHoverInfo(null);
+      return;
+    }
+
+    const findNearest = (lat: number, lng: number, points: WeatherPoint[]): WeatherPoint | null => {
+      if (!points.length) return null;
+      let best = points[0];
+      let bestDist = Infinity;
+      // Normalize lng to -180..180
+      const nLng = ((lng + 180) % 360 + 360) % 360 - 180;
+      for (const p of points) {
+        const d = (p.lat - lat) ** 2 + (p.lng - nLng) ** 2;
+        if (d < bestDist) { bestDist = d; best = p; }
+      }
+      return best;
+    };
+
+    const onMouseMove = (e: L.LeafletMouseEvent) => {
+      const { lat, lng } = e.latlng;
+      const containerPt = e.containerPoint;
+      let label = '';
+      let value = '';
+
+      if (inspectMode === 'wind' && weatherData.wind) {
+        // Wind data is in the temperature array (speed/direction in the raw grid)
+        // We need the raw grid — use temperature points as proxy for coords,
+        // then look up from the backend response which has all fields.
+        // Actually, we only have wind as u/v arrays, so let's compute speed from u/v.
+        const header = weatherData.wind[0].header;
+        const uData = weatherData.wind[0].data;
+        const vData = weatherData.wind[1].data;
+        const { la1, la2, lo1, lo2, nx, ny, dx, dy } = header;
+
+        const nLng = ((lng + 180) % 360 + 360) % 360 - 180;
+        const clampLat = Math.max(Math.min(la1, la2), Math.min(lat, Math.max(la1, la2)));
+        const clampLng = Math.max(lo1, Math.min(nLng, lo2));
+
+        // Grid index (la1 is top/highest lat, decreasing)
+        const latIdx = Math.round((la1 - clampLat) / dy);
+        const lngIdx = Math.round((clampLng - lo1) / dx);
+        const idx = Math.min(latIdx, ny - 1) * nx + Math.min(lngIdx, nx - 1);
+
+        if (idx >= 0 && idx < uData.length) {
+          const u = uData[idx];
+          const v = vData[idx];
+          const speed = Math.sqrt(u * u + v * v);
+          const dirRad = Math.atan2(-u, -v);
+          const dirDeg = ((dirRad * 180 / Math.PI) + 360) % 360;
+          label = 'Wind';
+          value = `${speed.toFixed(1)} km/h @ ${dirDeg.toFixed(0)}°`;
+        }
+      } else if (inspectMode === 'temp') {
+        const nearest = findNearest(lat, lng, weatherData.temperature);
+        if (nearest) {
+          label = 'Temperature';
+          value = `${nearest.value.toFixed(1)}°C`;
+        }
+      } else if (inspectMode === 'rain') {
+        const nearest = findNearest(lat, lng, weatherData.precipitation);
+        if (nearest) {
+          label = 'Precipitation';
+          value = `${nearest.value.toFixed(2)} mm`;
+        } else {
+          label = 'Precipitation';
+          value = '0.00 mm';
+        }
+      }
+
+      if (label) {
+        setHoverInfo({ x: containerPt.x + 16, y: containerPt.y - 10, label, value });
+      }
+    };
+
+    const onMouseOut = () => setHoverInfo(null);
+
+    map.on('mousemove', onMouseMove);
+    map.on('mouseout', onMouseOut);
+    // Change cursor to crosshair
+    map.getContainer().style.cursor = 'crosshair';
+
+    return () => {
+      map.off('mousemove', onMouseMove);
+      map.off('mouseout', onMouseOut);
+      map.getContainer().style.cursor = '';
+      setHoverInfo(null);
+    };
+  }, [inspectMode, weatherData]);
 
   // Handle vessel selection changes on map
   useEffect(() => {
@@ -658,6 +838,145 @@ const FleetOverview = () => {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* Weather overlay controls + legends */}
+        <div className="absolute bottom-12 left-4 z-[1000] flex flex-col gap-2 animate-fade-in" style={{ maxWidth: '320px' }}>
+          {/* Toggle buttons row */}
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => setShowWind(!showWind)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold shadow-md transition-all border ${showWind
+                ? 'bg-blue-500/90 text-white border-blue-400 backdrop-blur-sm'
+                : 'bg-card/90 text-muted-foreground border-border backdrop-blur-sm hover:bg-card'
+                }`}
+              title="Toggle wind particles"
+            >
+              <Wind className="w-3.5 h-3.5" />
+              Wind
+            </button>
+            <button
+              onClick={() => setShowTemp(!showTemp)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold shadow-md transition-all border ${showTemp
+                ? 'bg-orange-500/90 text-white border-orange-400 backdrop-blur-sm'
+                : 'bg-card/90 text-muted-foreground border-border backdrop-blur-sm hover:bg-card'
+                }`}
+              title="Toggle temperature overlay"
+            >
+              <Thermometer className="w-3.5 h-3.5" />
+              Temp
+            </button>
+            <button
+              onClick={() => setShowRain(!showRain)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold shadow-md transition-all border ${showRain
+                ? 'bg-cyan-500/90 text-white border-cyan-400 backdrop-blur-sm'
+                : 'bg-card/90 text-muted-foreground border-border backdrop-blur-sm hover:bg-card'
+                }`}
+              title="Toggle precipitation overlay"
+            >
+              <Droplets className="w-3.5 h-3.5" />
+              Rain
+            </button>
+            {/* Inspect toggle — only when any layer is active */}
+            {(showWind || showTemp || showRain) && (
+              <div className="flex items-center gap-0.5 ml-1 border-l border-border/50 pl-1.5">
+                {showWind && (
+                  <button
+                    onClick={() => setInspectMode(inspectMode === 'wind' ? null : 'wind')}
+                    className={`p-1 rounded transition-all ${inspectMode === 'wind' ? 'bg-blue-500/80 text-white' : 'text-muted-foreground hover:text-foreground'}`}
+                    title="Inspect wind values on hover"
+                  >
+                    <Crosshair className="w-3 h-3" />
+                  </button>
+                )}
+                {showTemp && (
+                  <button
+                    onClick={() => setInspectMode(inspectMode === 'temp' ? null : 'temp')}
+                    className={`p-1 rounded transition-all ${inspectMode === 'temp' ? 'bg-orange-500/80 text-white' : 'text-muted-foreground hover:text-foreground'}`}
+                    title="Inspect temperature values on hover"
+                  >
+                    <Crosshair className="w-3 h-3" />
+                  </button>
+                )}
+                {showRain && (
+                  <button
+                    onClick={() => setInspectMode(inspectMode === 'rain' ? null : 'rain')}
+                    className={`p-1 rounded transition-all ${inspectMode === 'rain' ? 'bg-cyan-500/80 text-white' : 'text-muted-foreground hover:text-foreground'}`}
+                    title="Inspect precipitation values on hover"
+                  >
+                    <Crosshair className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Temperature legend card */}
+          {showTemp && (
+            <div className="bg-card/95 backdrop-blur-md border border-border rounded-xl p-3 shadow-lg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[9px] font-bold text-muted-foreground tracking-wider">TEMPERATURE</span>
+                <span className="text-[9px] text-muted-foreground">°C</span>
+              </div>
+              <div className="flex gap-2">
+                <div className="relative w-3 rounded-full overflow-hidden" style={{ height: '80px', background: getTemperatureLegendGradient() }} />
+                <div className="flex flex-col justify-between py-0.5" style={{ height: '80px' }}>
+                  {[...TEMP_LEGEND_LABELS].reverse().map((l) => (
+                    <span key={l.pos} className="text-[8px] text-muted-foreground font-mono leading-none">{l.label}</span>
+                  ))}
+                </div>
+              </div>
+              <label className="flex items-center gap-1.5 mt-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showContours}
+                  onChange={() => setShowContours(!showContours)}
+                  className="w-3 h-3 rounded accent-orange-500"
+                />
+                <span className="text-[9px] text-muted-foreground">Contours (2°C)</span>
+              </label>
+            </div>
+          )}
+
+          {/* Precipitation legend card */}
+          {showRain && (
+            <div className="bg-card/95 backdrop-blur-md border border-border rounded-xl p-3 shadow-lg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[9px] font-bold text-muted-foreground tracking-wider">PRECIPITATION</span>
+                <span className="text-[9px] text-muted-foreground">mm</span>
+              </div>
+              <div className="flex gap-1">
+                {PRECIP_LEGEND_BINS.map((bin) => (
+                  <div key={bin.label} className="flex flex-col items-center gap-1">
+                    <div className="w-5 h-3 rounded-sm" style={{ background: bin.color }} />
+                    <span className="text-[7px] text-muted-foreground font-mono">{bin.label}</span>
+                  </div>
+                ))}
+              </div>
+              <label className="flex items-center gap-1.5 mt-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showStormEdges}
+                  onChange={() => setShowStormEdges(!showStormEdges)}
+                  className="w-3 h-3 rounded accent-cyan-500"
+                />
+                <span className="text-[9px] text-muted-foreground">Show Storm Edges</span>
+              </label>
+            </div>
+          )}
+        </div>
+
+        {/* Inspect hover tooltip */}
+        {hoverInfo && (
+          <div
+            className="absolute z-[1001] pointer-events-none"
+            style={{ left: hoverInfo.x, top: hoverInfo.y }}
+          >
+            <div className="bg-gray-900/90 backdrop-blur-sm text-white rounded-lg px-3 py-2 shadow-xl border border-white/10">
+              <div className="text-[9px] font-medium text-gray-400 uppercase tracking-wider">{hoverInfo.label}</div>
+              <div className="text-sm font-bold font-mono">{hoverInfo.value}</div>
             </div>
           </div>
         )}

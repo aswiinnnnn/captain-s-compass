@@ -1,4 +1,4 @@
-from app.api.endpoints import auth, bidding, calender, chat, fleet, health, marine, ports, voyage
+from app.api.endpoints import auth, bidding, calender, chat, fleet, health, map_weather, marine, ports, voyage
 from fastapi import APIRouter
 
 from app.config import settings
@@ -15,3 +15,4 @@ api_router.include_router(ports.router, prefix="/ports")
 api_router.include_router(chat.router, prefix="/chat")
 api_router.include_router(marine.router, prefix="/marine")
 api_router.include_router(calender.router, prefix="/calendar")
+api_router.include_router(map_weather.router, prefix="/map-weather")
