@@ -132,7 +132,7 @@ const VoyageMap = ({ shipPosition, onCanalClick }: VoyageMapProps) => {
             <div style="font-size:10px; color:#475569; margin-bottom:2px;">ETA: <b>${cp.eta}</b> | Dist: <b>${cp.distance}</b></div>
             <div style="font-size:10px; color:#475569; margin-bottom:2px;">Queue: <b>${cp.queueLength} vessels</b></div>
             <div style="font-size:10px; color:#475569;">Security: <b>${cp.securityLevel}</b></div>
-            ${cp.requiresBidding ? '<div style="font-size:9px; color:#2563eb; font-weight:600; margin-top:4px;">Bidding: $' + (cp.currentBidRange.min/1000).toFixed(0) + 'k - $' + (cp.currentBidRange.max/1000).toFixed(0) + 'k</div>' : ''}
+            ${cp.requiresBidding ? '<div style="font-size:9px; color:#2563eb; font-weight:600; margin-top:4px;">Bidding: $' + (cp.currentBidRange.min / 1000).toFixed(0) + 'k - $' + (cp.currentBidRange.max / 1000).toFixed(0) + 'k</div>' : ''}
           </div>`,
           {
             direction: 'top',
