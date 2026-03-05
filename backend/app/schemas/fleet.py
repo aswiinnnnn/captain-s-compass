@@ -105,6 +105,17 @@ class FleetVesselSchema(BaseModel):
     charterRate: Optional[float] = None
 
 
+class AISShipSchema(BaseModel):
+    """AIS (Automatic Identification System) ship data from real-time stream."""
+
+    mmsi: str  # Maritime Mobile Service Identity
+    latitude: float
+    longitude: float
+    speed: float  # Speed in knots
+    heading: float  # Heading in degrees (0-359)
+    timestamp: str  # ISO format datetime
+
+
 # ============================================================================
 # Additional properties stored in DB
 # ============================================================================

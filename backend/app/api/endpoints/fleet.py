@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-from app.schemas.fleet import FleetVesselSchema, MitigationStrategySchema, SmartOptionSchema
+from app.schemas.fleet import FleetVesselSchema, MitigationStrategySchema, SmartOptionSchema, AISShipSchema
 from app.services import fleet_service
+from app.providers import aisstream
 
-router = APIRouter(prefix="/fleet", tags=["fleet"])
+router = APIRouter(tags=["fleet"])
 
 
 @router.get("/vessels", response_model=list[FleetVesselSchema])
@@ -45,3 +46,9 @@ def get_mitigation(vessel_id: str):
     if not vessel:
         raise HTTPException(status_code=404, detail="Vessel not found")
     return fleet_service.get_mitigation_strategies(vessel)
+
+
+@router.get("/ais-ships", response_model=list[AISShipSchema])
+def get_ais_ships(limit: int = 200):
+    """Get real ships from AISStream (Automatic Identification System)."""
+    return aisstream.get_ais_ships(limit=limit)

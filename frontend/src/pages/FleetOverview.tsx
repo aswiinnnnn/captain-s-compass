@@ -9,6 +9,16 @@ import NavTab from '@/components/NavTab';
 
 const SHIP_BLUE = 'hsl(224, 76%, 48%)';
 const CHARTER_GOLD = 'hsl(45, 93%, 47%)';
+const AIS_SHIP_GRAY = 'hsl(203, 8%, 60%)'; // Gray for real ships
+
+interface AISShip {
+  mmsi: string;
+  latitude: number;
+  longitude: number;
+  speed: number;
+  heading: number;
+  timestamp: string;
+}
 
 const FleetOverview = () => {
   const navigate = useNavigate();
@@ -16,6 +26,7 @@ const FleetOverview = () => {
   const mapInstanceRef = useRef<L.Map | null>(null);
   const fleetLayerRef = useRef<L.LayerGroup | null>(null);
   const vesselLayerRef = useRef<L.LayerGroup | null>(null);
+  const aisLayerRef = useRef<L.LayerGroup | null>(null);
 
   const [selectedVessel, setSelectedVessel] = useState<FleetVessel | null>(null);
   const [vesselPanelShow, setVesselPanelShow] = useState(false);
@@ -23,6 +34,7 @@ const FleetOverview = () => {
   const [canalPanelShow, setCanalPanelShow] = useState(false);
   const [canalPanelPinned, setCanalPanelPinned] = useState(false);
   const [sortBy, setSortBy] = useState<'risk' | 'charter'>('risk');
+  const [aisShips, setAisShips] = useState<AISShip[]>([]);
 
   const vesselHideTimer = useRef<NodeJS.Timeout>();
   const canalHideTimer = useRef<NodeJS.Timeout>();
@@ -31,6 +43,30 @@ const FleetOverview = () => {
     const stored = localStorage.getItem('voyageguard_captain');
     if (!stored) { navigate('/login'); return; }
   }, [navigate]);
+
+  // Fetch real ships from AISStream - refresh every 15 minutes
+  useEffect(() => {
+    const fetchAisShips = async () => {
+      try {
+        const response = await fetch('/api/fleet/ais-ships?limit=200');
+        if (response.ok) {
+          const data = await response.json();
+          setAisShips(data);
+          console.log(`Updated AIS ships at ${new Date().toLocaleTimeString()}: ${data.length} ships`);
+        }
+      } catch (error) {
+        console.error('Error fetching AIS ships:', error);
+      }
+    };
+
+    // Fetch immediately on mount
+    fetchAisShips();
+
+    // Then refresh every 15 minutes (900 seconds)
+    const interval = setInterval(fetchAisShips, 15 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const logout = () => {
     localStorage.removeItem('voyageguard_captain');
@@ -170,9 +206,52 @@ const FleetOverview = () => {
       }
     });
 
+    // Add AIS ships layer
+    const aisLayer = L.layerGroup().addTo(map);
+    aisLayerRef.current = aisLayer;
+
+    // Render AIS ships (real time ships from AISStream)
+    aisShips.forEach(ship => {
+      const iconSize = 24; // Smaller than fleet ships
+      const icon = L.divIcon({
+        className: 'ais-ship-marker',
+        html: `
+          <div style="position:relative; width:${iconSize}px; height:${iconSize}px; cursor:pointer; opacity:0.85;">
+            <div style="position:absolute; inset:0; background:${AIS_SHIP_GRAY}15; border-radius:50%;"></div>
+            <div style="position:absolute; inset:2px; background:${AIS_SHIP_GRAY}; border-radius:50%; display:flex; align-items:center; justify-content:center; border:1.5px solid white; box-shadow: 0 1px 4px rgba(0,0,0,0.2);">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"><path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1 .6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.94 5.34 2.81 7.76"/><path d="M19 13V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v6"/></svg>
+            </div>
+          </div>
+        `,
+        iconSize: [iconSize, iconSize],
+        iconAnchor: [iconSize / 2, iconSize / 2],
+      });
+
+      const speedKnots = Math.round(ship.speed);
+      const marker = L.marker([ship.latitude, ship.longitude], { icon })
+        .bindTooltip(
+          `<div style="min-width:150px;">
+            <div style="font-weight:700; font-size:11px; margin-bottom:2px;">Real-Time Ship</div>
+            <div style="font-size:9px; color:#64748b; margin-bottom:3px;">MMSI: ${ship.mmsi}</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:2px 8px; font-size:9px;">
+              <div style="color:#64748b;">Speed</div><div style="font-weight:600;">${speedKnots} kn</div>
+              <div style="color:#64748b;">Heading</div><div style="font-weight:600;">${Math.round(ship.heading)}°</div>
+              <div style="color:#64748b;">Lat</div><div style="font-weight:600;">${ship.latitude.toFixed(2)}°</div>
+              <div style="color:#64748b;">Lng</div><div style="font-weight:600;">${ship.longitude.toFixed(2)}°</div>
+            </div>
+            <div style="margin-top:3px; padding-top:3px; border-top:1px solid #e2e8f0; font-size:8px; color:#94a3b8;">
+              Updated: ${new Date(ship.timestamp).toLocaleTimeString()}
+            </div>
+          </div>`,
+          { direction: 'top', offset: [0, -12], className: 'ais-ship-tooltip' }
+        );
+
+      aisLayer.addLayer(marker);
+    });
+
     mapInstanceRef.current = map;
     return () => { map.remove(); mapInstanceRef.current = null; };
-  }, []);
+  }, [aisShips]);
 
   // Handle vessel selection changes on map
   useEffect(() => {
