@@ -24,13 +24,28 @@ backend/.env
 .pytest_cache/
 .ruff_cache/
 
+# requests-cache / weather cache (SQLite + .cache dirs)
+.cache/
+backend/.cache/
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+
+# Docker
+pgdata/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
 .DS_Store
+Thumbs.db
+desktop.ini
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+*.bak
+*.tmp
+*~
