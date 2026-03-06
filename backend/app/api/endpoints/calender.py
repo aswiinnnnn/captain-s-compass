@@ -25,7 +25,6 @@ from app.services.calender import (
     add_event,
     list_events,
     remove_event,
-    seed_mock_data,
     sync_external_events,
 )
 from app.config import settings

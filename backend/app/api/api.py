@@ -1,7 +1,6 @@
 from app.api.endpoints import auth, bidding, calender, chat, fleet, health, marine, ports, voyage
 from fastapi import APIRouter
 
-from app.config import settings
 
 api_router = APIRouter()
 

@@ -1,12 +1,13 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Anchor, Bell, Settings, Search, ChevronDown, ChevronUp, Edit3, Save, X, AlertTriangle, TrendingUp, MapPin, Calendar as CalIcon, Shield, Truck, Clock, DollarSign, BarChart3, Eye, Filter, Plus, Trash2, Info } from 'lucide-react';
+import { Anchor, Bell, Settings, Search, ChevronDown, ChevronUp, Edit3, Save, X, AlertTriangle, TrendingUp, MapPin, Calendar as CalIcon, Shield, Truck, Clock, DollarSign, BarChart3, Eye, Filter, Plus, Trash2, Info, RefreshCw } from 'lucide-react';
 import NavTab from '@/components/NavTab';
 import {
-  portEntries, calendarEvents, riskZones,
+  portEntries, riskZones,
   EVENT_TYPE_CONFIG, CONGESTION_CONFIG, getPortRiskScore, getPortDailyCost,
   type PortEntry, type EquipmentItem, type CalendarEvent, type CalendarEventType, type UserRole,
 } from '@/data/portIntelligenceData';
+import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 type Tab = 'ports' | 'calendar' | 'analytics' | 'risks';
@@ -25,9 +26,15 @@ const PortIntelligence = () => {
 
   // Mutable local data
   const [localPorts, setLocalPorts] = useState<PortEntry[]>([...portEntries]);
-  const [localEvents, setLocalEvents] = useState<CalendarEvent[]>([...calendarEvents]);
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [showAddPort, setShowAddPort] = useState(false);
+
+  // Live calendar events from backend
+  const {
+    events: localEvents, isLoading: eventsLoading,
+    addEvent: apiAddEvent, removeEvent: apiRemoveEvent,
+    syncEvents: apiSync, isSyncing,
+  } = useCalendarEvents();
 
   // Editing state for port fields
   const [editValues, setEditValues] = useState<Record<string, Partial<PortEntry>>>({});
@@ -41,10 +48,16 @@ const PortIntelligence = () => {
     return localPorts.filter(p => `${p.name} ${p.country} ${p.region} ${p.code}`.toLowerCase().includes(s));
   }, [searchTerm, localPorts]);
 
+  // Only show events that are today or in the future (endDate >= today)
+  const futureLocalEvents = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10); // 'YYYY-MM-DD'
+    return localEvents.filter(e => !e.endDate || e.endDate >= today);
+  }, [localEvents]);
+
   const filteredEvents = useMemo(() => {
-    if (eventFilter === 'all') return localEvents;
-    return localEvents.filter(e => e.type === eventFilter);
-  }, [eventFilter, localEvents]);
+    if (eventFilter === 'all') return futureLocalEvents;
+    return futureLocalEvents.filter(e => e.type === eventFilter);
+  }, [eventFilter, futureLocalEvents]);
 
   const costChartData = useMemo(() => localPorts.map(p => ({
     name: p.code,
@@ -76,12 +89,12 @@ const PortIntelligence = () => {
   };
 
   const addNewEvent = (event: CalendarEvent) => {
-    setLocalEvents(prev => [...prev, event]);
+    apiAddEvent(event);
     setShowAddEvent(false);
   };
 
   const deleteEvent = (eventId: string) => {
-    setLocalEvents(prev => prev.filter(e => e.id !== eventId));
+    apiRemoveEvent(eventId);
   };
 
   return (
@@ -125,15 +138,16 @@ const PortIntelligence = () => {
             expandedPort={expandedPort} setExpandedPort={setExpandedPort}
             canEdit={canEdit} editingPort={editingPort} startEditPort={startEditPort} savePortEdit={savePortEdit} cancelEdit={() => setEditingPort(null)}
             editValues={editValues} updateEditField={updateEditField} localPorts={localPorts} setLocalPorts={setLocalPorts}
-            showAddPort={showAddPort} setShowAddPort={setShowAddPort} />
+            showAddPort={showAddPort} setShowAddPort={setShowAddPort} events={localEvents} />
         )}
         {activeTab === 'calendar' && (
-          <CalendarTab events={filteredEvents} allEvents={localEvents} eventFilter={eventFilter} setEventFilter={setEventFilter}
+          <CalendarTab events={filteredEvents} allEvents={futureLocalEvents} eventFilter={eventFilter} setEventFilter={setEventFilter}
             expandedEvent={expandedEvent} setExpandedEvent={setExpandedEvent}
             canEdit={canEdit} showAddEvent={showAddEvent} setShowAddEvent={setShowAddEvent}
-            addNewEvent={addNewEvent} deleteEvent={deleteEvent} localPorts={localPorts} />
+            addNewEvent={addNewEvent} deleteEvent={deleteEvent} localPorts={localPorts}
+            syncEvents={apiSync} isSyncing={isSyncing} isLoading={eventsLoading} />
         )}
-        {activeTab === 'analytics' && <AnalyticsTab costData={costChartData} congestionData={congestionData} localPorts={localPorts} />}
+        {activeTab === 'analytics' && <AnalyticsTab costData={costChartData} congestionData={congestionData} localPorts={localPorts} events={localEvents} />}
         {activeTab === 'risks' && <RisksTab localEvents={localEvents} />}
       </div>
     </div>
@@ -143,13 +157,13 @@ const PortIntelligence = () => {
 // ═══════════════════════════════════════════════════════
 // Ports Tab
 // ═══════════════════════════════════════════════════════
-const PortsTab = ({ ports, searchTerm, setSearchTerm, expandedPort, setExpandedPort, canEdit, editingPort, startEditPort, savePortEdit, cancelEdit, editValues, updateEditField, localPorts, setLocalPorts, showAddPort, setShowAddPort }: {
+const PortsTab = ({ ports, searchTerm, setSearchTerm, expandedPort, setExpandedPort, canEdit, editingPort, startEditPort, savePortEdit, cancelEdit, editValues, updateEditField, localPorts, setLocalPorts, showAddPort, setShowAddPort, events }: {
   ports: PortEntry[]; searchTerm: string; setSearchTerm: (s: string) => void;
   expandedPort: string | null; setExpandedPort: (s: string | null) => void;
   canEdit: boolean; editingPort: string | null; startEditPort: (id: string) => void; savePortEdit: (id: string) => void; cancelEdit: () => void;
   editValues: Record<string, Partial<PortEntry>>; updateEditField: (id: string, field: string, value: any) => void;
   localPorts: PortEntry[]; setLocalPorts: (fn: (prev: PortEntry[]) => PortEntry[]) => void;
-  showAddPort: boolean; setShowAddPort: (b: boolean) => void;
+  showAddPort: boolean; setShowAddPort: (b: boolean) => void; events: CalendarEvent[];
 }) => (
   <div className="space-y-3">
     <div className="flex items-center gap-3">
@@ -172,7 +186,7 @@ const PortsTab = ({ ports, searchTerm, setSearchTerm, expandedPort, setExpandedP
     {showAddPort && canEdit && <AddPortForm onAdd={(port) => { setLocalPorts(prev => [...prev, port]); setShowAddPort(false); }} onCancel={() => setShowAddPort(false)} />}
 
     {ports.map(port => {
-      const riskScore = getPortRiskScore(port.id);
+      const riskScore = getPortRiskScore(port.id, events);
       const isExpanded = expandedPort === port.id;
       const isEditing = editingPort === port.id;
       const cong = CONGESTION_CONFIG[port.congestionLevel];
@@ -417,13 +431,29 @@ const AddPortForm = ({ onAdd, onCancel }: { onAdd: (p: PortEntry) => void; onCan
 // ═══════════════════════════════════════════════════════
 // Calendar Tab
 // ═══════════════════════════════════════════════════════
-const CalendarTab = ({ events, allEvents, eventFilter, setEventFilter, expandedEvent, setExpandedEvent, canEdit, showAddEvent, setShowAddEvent, addNewEvent, deleteEvent, localPorts }: {
+
+/**
+ * Parse a 'YYYY-MM-DD' string as **local** midnight.
+ * Using plain `new Date('YYYY-MM-DD')` treats it as UTC, which
+ * shifts the displayed date by one day in negative-UTC timezones.
+ */
+function parseLocalDate(dateStr: string | undefined | null): Date {
+  if (!dateStr) return new Date(NaN);
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return new Date(NaN);
+  const [y, m, d] = parts.map(Number);
+  if (!y || !m || !d) return new Date(NaN);
+  return new Date(y, m - 1, d);
+}
+
+const CalendarTab = ({ events, allEvents, eventFilter, setEventFilter, expandedEvent, setExpandedEvent, canEdit, showAddEvent, setShowAddEvent, addNewEvent, deleteEvent, localPorts, syncEvents, isSyncing, isLoading }: {
   events: CalendarEvent[]; allEvents: CalendarEvent[]; eventFilter: CalendarEventType | 'all'; setEventFilter: (f: CalendarEventType | 'all') => void;
   expandedEvent: string | null; setExpandedEvent: (s: string | null) => void;
   canEdit: boolean; showAddEvent: boolean; setShowAddEvent: (b: boolean) => void;
   addNewEvent: (e: CalendarEvent) => void; deleteEvent: (id: string) => void; localPorts: PortEntry[];
+  syncEvents: () => void; isSyncing: boolean; isLoading: boolean;
 }) => {
-  const sortedEvents = useMemo(() => [...events].sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()), [events]);
+  const sortedEvents = useMemo(() => [...events].sort((a, b) => parseLocalDate(a.startDate).getTime() - parseLocalDate(b.startDate).getTime()), [events]);
 
   return (
     <div className="space-y-4">
@@ -444,16 +474,44 @@ const CalendarTab = ({ events, allEvents, eventFilter, setEventFilter, expandedE
             </button>
           );
         })}
-        {canEdit && (
-          <button onClick={() => setShowAddEvent(!showAddEvent)}
-            className="ml-auto flex items-center gap-1.5 px-3 py-1 text-xs font-semibold bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors">
-            <Plus className="w-3.5 h-3.5" /> Add Event
+        <div className="ml-auto flex items-center gap-2">
+          <button onClick={() => syncEvents()} disabled={isSyncing}
+            className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold bg-secondary text-secondary-foreground rounded-full hover:bg-secondary/90 transition-colors disabled:opacity-50">
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+            {isSyncing ? 'Syncing…' : 'Sync Live Data'}
           </button>
-        )}
+          {canEdit && (
+            <button onClick={() => setShowAddEvent(!showAddEvent)}
+              className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors">
+              <Plus className="w-3.5 h-3.5" /> Add Event
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Add event form */}
       {showAddEvent && canEdit && <AddEventForm localPorts={localPorts} onAdd={addNewEvent} onCancel={() => setShowAddEvent(false)} />}
+
+      {/* Loading state */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
+          <RefreshCw className="w-4 h-4 animate-spin" />
+          <span className="text-sm">Loading calendar events…</span>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!isLoading && allEvents.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
+          <CalIcon className="w-10 h-10 opacity-20" />
+          <p className="text-sm font-medium">No events yet</p>
+          <button onClick={() => syncEvents()} disabled={isSyncing}
+            className="flex items-center gap-1.5 text-xs text-primary hover:underline disabled:opacity-50">
+            <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+            Sync live data now
+          </button>
+        </div>
+      )}
 
       {/* Timeline cards */}
       <div className="relative">
@@ -463,9 +521,9 @@ const CalendarTab = ({ events, allEvents, eventFilter, setEventFilter, expandedE
             const cfg = EVENT_TYPE_CONFIG[event.type];
             const isExpanded = expandedEvent === event.id;
             const port = localPorts.find(p => p.id === event.portId);
-            const startD = new Date(event.startDate);
-            const endD = new Date(event.endDate);
-            const durationDays = Math.ceil((endD.getTime() - startD.getTime()) / 86400000);
+            const startD = parseLocalDate(event.startDate);
+            const endD = parseLocalDate(event.endDate);
+            const durationDays = Math.max(1, Math.ceil((endD.getTime() - startD.getTime()) / 86400000) + 1);
 
             return (
               <div key={event.id} className="relative pl-14">
@@ -596,14 +654,15 @@ const EditableStat = ({ label, value, onChange }: { label: string; value: number
 // ═══════════════════════════════════════════════════════
 // Analytics Tab
 // ═══════════════════════════════════════════════════════
-const AnalyticsTab = ({ costData, congestionData, localPorts }: {
+const AnalyticsTab = ({ costData, congestionData, localPorts, events }: {
   costData: { name: string; anchorage: number; berth: number; equipment: number }[];
   congestionData: { name: string; port: string; level: string; score: number }[];
   localPorts: PortEntry[];
+  events: CalendarEvent[];
 }) => {
   const portRiskData = useMemo(() => localPorts.map(p => ({
-    name: p.code, port: p.name, risk: getPortRiskScore(p.id),
-  })).sort((a, b) => b.risk - a.risk), [localPorts]);
+    name: p.code, port: p.name, risk: getPortRiskScore(p.id, events),
+  })).sort((a, b) => b.risk - a.risk), [localPorts, events]);
 
   const bottlenecks = useMemo(() => {
     const alerts: { port: string; equipment: string; available: number; total: number }[] = [];
@@ -617,8 +676,8 @@ const AnalyticsTab = ({ costData, congestionData, localPorts }: {
     return alerts;
   }, [localPorts]);
 
-  const recommended = useMemo(() => localPorts.filter(p => getPortRiskScore(p.id) < 35 && p.congestionLevel !== 'Critical' && p.congestionLevel !== 'High'), [localPorts]);
-  const avoided = useMemo(() => localPorts.filter(p => getPortRiskScore(p.id) >= 50 || p.congestionLevel === 'Critical'), [localPorts]);
+  const recommended = useMemo(() => localPorts.filter(p => getPortRiskScore(p.id, events) < 35 && p.congestionLevel !== 'Critical' && p.congestionLevel !== 'High'), [localPorts, events]);
+  const avoided = useMemo(() => localPorts.filter(p => getPortRiskScore(p.id, events) >= 50 || p.congestionLevel === 'Critical'), [localPorts, events]);
 
   return (
     <div className="space-y-6">
@@ -643,7 +702,7 @@ const AnalyticsTab = ({ costData, congestionData, localPorts }: {
             {recommended.map(p => (
               <div key={p.id} className="flex items-center justify-between text-xs p-2 rounded bg-green-50">
                 <span className="font-medium">{p.name} <span className="text-muted-foreground">({p.code})</span></span>
-                <span className="font-mono text-green-700">Risk {getPortRiskScore(p.id)}</span>
+                <span className="font-mono text-green-700">Risk {getPortRiskScore(p.id, events)}</span>
               </div>
             ))}
             {recommended.length === 0 && <span className="text-xs text-muted-foreground">No ports meet all criteria currently</span>}
@@ -655,7 +714,7 @@ const AnalyticsTab = ({ costData, congestionData, localPorts }: {
             {avoided.map(p => (
               <div key={p.id} className="flex items-center justify-between text-xs p-2 rounded bg-red-50">
                 <span className="font-medium">{p.name} <span className="text-muted-foreground">({p.code})</span></span>
-                <span className="font-mono text-destructive">Risk {getPortRiskScore(p.id)}</span>
+                <span className="font-mono text-destructive">Risk {getPortRiskScore(p.id, events)}</span>
               </div>
             ))}
           </div>
@@ -744,7 +803,7 @@ const RisksTab = ({ localEvents }: { localEvents: CalendarEvent[] }) => (
 
     <h3 className="text-sm font-semibold flex items-center gap-2 mt-6"><AlertTriangle className="w-4 h-4 text-destructive" /> Active Risk Advisories</h3>
     <div className="space-y-2">
-      {localEvents.filter(e => e.type === 'war_risk' || e.severity === 'Critical').map(event => {
+      {localEvents.filter(e => e.type === 'war_risk' || e.type === 'risk' || e.severity === 'Critical').map(event => {
         const cfg = EVENT_TYPE_CONFIG[event.type];
         return (
           <div key={event.id} className={`${cfg.bgClass} rounded-lg p-3 border-l-4`} style={{ borderLeftColor: cfg.color }}>

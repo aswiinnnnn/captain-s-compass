@@ -1,64 +1,55 @@
-from typing import Generic, TypeVar, Type, List, Optional
-from uuid import UUID
-from sqlalchemy.orm import Session
+from __future__ import annotations
+
+from typing import Generic, List, Optional, Type, TypeVar
+
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.db.base_class import Base
 
 ModelType = TypeVar("ModelType", bound=Base)
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
 UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
 
+
 class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     def __init__(self, model: Type[ModelType]):
         self.model = model
 
-    def get_by_id(self, db: Session, id: UUID) -> Optional[ModelType]:
-        return db.query(self.model).filter(self.model.id == id).first()
+    async def get(self, db: AsyncSession, id: str) -> Optional[ModelType]:
+        """Fetch a single row by primary key."""
+        result = await db.execute(select(self.model).where(self.model.id == id))
+        return result.scalar_one_or_none()
 
-    def get_multi(self, db: Session, skip: int = 0, limit: int = 100) -> List[ModelType]:
-        return db.query(self.model).offset(skip).limit(limit).all()
+    async def get_multi(
+        self, db: AsyncSession, skip: int = 0, limit: int = 100
+    ) -> List[ModelType]:
+        """Fetch a paginated list of rows."""
+        result = await db.execute(select(self.model).offset(skip).limit(limit))
+        return list(result.scalars().all())
 
-    def create(self, db: Session, obj_in: CreateSchemaType) -> ModelType:
+    async def create(self, db: AsyncSession, obj_in: CreateSchemaType) -> ModelType:
+        """Insert a row from a Pydantic schema."""
         db_obj = self.model(**obj_in.model_dump())
         db.add(db_obj)
-        db.commit()
-        db.refresh(db_obj)
+        await db.commit()
+        await db.refresh(db_obj)
         return db_obj
 
-    def update(self, db: Session, db_obj: ModelType, obj_in: UpdateSchemaType) -> ModelType:
-        obj_data = obj_in.dict(exclude_unset=True)
-        for field, value in obj_data.items():
+    async def update(
+        self, db: AsyncSession, db_obj: ModelType, obj_in: UpdateSchemaType
+    ) -> ModelType:
+        """Partially update an existing row from a Pydantic schema."""
+        for field, value in obj_in.model_dump(exclude_unset=True).items():
             setattr(db_obj, field, value)
         db.add(db_obj)
-        db.commit()
-        db.refresh(db_obj)
+        await db.commit()
+        await db.refresh(db_obj)
         return db_obj
 
-    def remove(self, db: Session, db_obj: ModelType) -> Optional[ModelType]:
-        if db_obj:
-            db.delete(db_obj)
-            db.commit()
-            return db_obj
-        return None
-
-    def deactivate(self, db: Session, db_obj: ModelType) -> Optional[ModelType]:
-        if db_obj:
-            if hasattr(db_obj, "is_active"):
-                db_obj.is_active = False
-                db.add(db_obj)
-                db.commit()
-                db.refresh(db_obj)
-            else:
-                raise AttributeError(f"{self.model.__name__} has no attribute 'is_active'")
-        return db_obj
-    
-    def reactivate(self, db: Session, db_obj: ModelType) -> Optional[ModelType]:
-        if db_obj:
-            if hasattr(db_obj, "is_active"):
-                db_obj.is_active = True
-                db.add(db_obj)
-                db.commit()
-                db.refresh(db_obj)
-            else:
-                raise AttributeError(f"{self.model.__name__} has no attribute 'is_active'")
+    async def remove(self, db: AsyncSession, db_obj: ModelType) -> ModelType:
+        """Delete a row given its ORM instance."""
+        await db.delete(db_obj)
+        await db.commit()
         return db_obj

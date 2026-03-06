@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str
     BACKEND_DB_POOL_SIZE: int
     BACKEND_DB_MAX_OVERFLOW: int
+    TAVILY_API_KEY: str = ""  # https://tavily.com — free tier: 1 000 req/month
 
     @property
     def cors_origin_list(self) -> list[str]:

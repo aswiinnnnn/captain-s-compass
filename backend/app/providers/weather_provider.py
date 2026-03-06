@@ -20,14 +20,28 @@ logger = logging.getLogger(__name__)
 
 # Port coordinates (lat / lng) + metadata.
 PORT_COORDS: dict[str, dict] = {
-    "rotterdam": {"lat": 51.90, "lng": 4.50, "region": "Europe - North", "name": "Rotterdam"},
-    "hamburg": {"lat": 53.55, "lng": 9.99, "region": "Europe - North", "name": "Hamburg"},
-    "singapore": {"lat": 1.26, "lng": 103.84, "region": "Asia - Southeast", "name": "Singapore"},
-    "shanghai": {"lat": 31.23, "lng": 121.47, "region": "Asia - East", "name": "Shanghai"},
-    "mumbai": {"lat": 18.95, "lng": 72.95, "region": "Asia - South", "name": "Mumbai"},
-    "newyork": {"lat": 40.68, "lng": -74.04, "region": "Americas - North", "name": "New York"},
-    "santos": {"lat": -23.96, "lng": -46.30, "region": "Americas - South", "name": "Santos"},
-    "busan": {"lat": 35.10, "lng": 129.04, "region": "Asia - East", "name": "Busan"},
+    # ── Europe ───────────────────────────────────────────────────────────────
+    "rotterdam":  {"lat":  51.90, "lng":   4.50, "region": "Europe - North",   "name": "Rotterdam"},
+    "hamburg":    {"lat":  53.55, "lng":   9.99, "region": "Europe - North",   "name": "Hamburg"},
+    "antwerp":    {"lat":  51.22, "lng":   4.40, "region": "Europe - North",   "name": "Antwerp"},
+    "felixstowe": {"lat":  51.97, "lng":   1.35, "region": "Europe - North",   "name": "Felixstowe"},
+    "piraeus":    {"lat":  37.94, "lng":  23.64, "region": "Europe - South",   "name": "Piraeus"},
+    # ── Asia ─────────────────────────────────────────────────────────────────
+    "singapore":  {"lat":   1.26, "lng": 103.84, "region": "Asia - Southeast", "name": "Singapore"},
+    "klang":      {"lat":   3.04, "lng": 101.45, "region": "Asia - Southeast", "name": "Port Klang"},
+    "colombo":    {"lat":   6.93, "lng":  79.85, "region": "Asia - South",     "name": "Colombo"},
+    "mumbai":     {"lat":  18.95, "lng":  72.95, "region": "Asia - South",     "name": "Mumbai"},
+    "shanghai":   {"lat":  31.23, "lng": 121.47, "region": "Asia - East",      "name": "Shanghai"},
+    "hongkong":   {"lat":  22.30, "lng": 114.17, "region": "Asia - East",      "name": "Hong Kong"},
+    "busan":      {"lat":  35.10, "lng": 129.04, "region": "Asia - East",      "name": "Busan"},
+    # ── Middle East & Africa ─────────────────────────────────────────────────
+    "dubai":      {"lat":  25.26, "lng":  55.34, "region": "Middle East",      "name": "Dubai / Jebel Ali"},
+    "suez":       {"lat":  31.25, "lng":  32.30, "region": "Middle East",      "name": "Port Said / Suez"},
+    "durban":     {"lat": -29.87, "lng":  31.04, "region": "Africa - South",   "name": "Durban"},
+    # ── Americas ─────────────────────────────────────────────────────────────
+    "newyork":    {"lat":  40.68, "lng": -74.04, "region": "Americas - North", "name": "New York"},
+    "losangeles": {"lat":  33.74, "lng": -118.26, "region": "Americas - North", "name": "Los Angeles"},
+    "santos":     {"lat": -23.96, "lng": -46.30, "region": "Americas - South", "name": "Santos"},
 }
 
 BASE_URL = "https://api.open-meteo.com/v1/forecast"

@@ -29,7 +29,7 @@ export interface PortEntry {
   lastUpdatedAt: string;
 }
 
-export type CalendarEventType = 'holiday' | 'weather' | 'strike' | 'war_risk' | 'customs_delay';
+export type CalendarEventType = 'holiday' | 'weather' | 'strike' | 'war_risk' | 'customs_delay' | 'risk' | 'disruption';
 
 export interface CalendarEvent {
   id: string;
@@ -152,61 +152,16 @@ export const portEntries: PortEntry[] = [
   },
 ];
 
-// ── Calendar Events ────────────────────────────────────
-export const calendarEvents: CalendarEvent[] = [
-  {
-    id: 'ev-1', type: 'holiday', title: 'Chinese New Year', description: 'Major port slowdown across China',
-    detail: 'Shanghai and all Chinese ports operate at reduced capacity. Expect 3-5 day delays on cargo handling. Customs offices closed Feb 28 - Mar 2.',
-    portId: 'shanghai', region: 'Asia - East', startDate: '2026-02-28', endDate: '2026-03-05', severity: 'High',
-  },
-  {
-    id: 'ev-2', type: 'weather', title: 'Cyclone Warning — Bay of Bengal', description: 'Category 2 cyclone forecast near Indian coast',
-    detail: 'IMD has issued a cyclone watch. Mumbai port may suspend operations for 48hrs. Vessels en route should consider diversion to Mundra or delayed arrival.',
-    portId: 'mumbai', region: 'Asia - South', startDate: '2026-03-01', endDate: '2026-03-04', severity: 'Critical',
-  },
-  {
-    id: 'ev-3', type: 'strike', title: 'Santos Dock Workers Strike', description: 'Partial strike by dock workers union',
-    detail: 'SINDAPORT union has declared a 72hr strike over wage negotiations. Container handling expected to drop 60%. Bulk cargo unaffected.',
-    portId: 'santos', region: 'Americas - South', startDate: '2026-03-02', endDate: '2026-03-04', severity: 'High',
-  },
-  {
-    id: 'ev-4', type: 'war_risk', title: 'Red Sea Transit Risk Elevated', description: 'Houthi attacks on commercial shipping continue',
-    detail: 'JWC has maintained the Red Sea / Gulf of Aden as a Listed Area. War risk insurance premiums remain at 0.5-1% of hull value. Recommend Cape of Good Hope routing.',
-    portId: null, region: 'Middle East', startDate: '2026-01-01', endDate: '2026-06-30', severity: 'Critical',
-  },
-  {
-    id: 'ev-5', type: 'customs_delay', title: 'Rotterdam — New EU CBAM Checks', description: 'Enhanced carbon border checks causing clearance delays',
-    detail: 'EU Carbon Border Adjustment Mechanism Phase 2 enforcement begins. Steel, aluminium, and cement cargoes face additional 4-8hr clearance. Ensure CBAM declarations are pre-filed.',
-    portId: 'rotterdam', region: 'Europe - North', startDate: '2026-03-01', endDate: '2026-03-31', severity: 'Moderate',
-  },
-  {
-    id: 'ev-6', type: 'holiday', title: 'Holi Festival — India', description: 'Indian ports reduced operations',
-    detail: 'Government holiday. JNPT customs closed for 1 day. Port operations at ~40% capacity.',
-    portId: 'mumbai', region: 'Asia - South', startDate: '2026-03-10', endDate: '2026-03-11', severity: 'Low',
-  },
-  {
-    id: 'ev-7', type: 'weather', title: 'Nor\'easter — US East Coast', description: 'Winter storm expected NYC/NJ ports',
-    detail: 'NWS forecasts 40kt+ winds and heavy snow Mar 6-7. Port Elizabeth likely to close for 12-18hrs. Recommend pre-positioning or delay.',
-    portId: 'newyork', region: 'Americas - North', startDate: '2026-03-06', endDate: '2026-03-08', severity: 'High',
-  },
-  {
-    id: 'ev-8', type: 'strike', title: 'Hamburg Pilot Boat Slowdown', description: 'Pilot association work-to-rule action',
-    detail: 'Hamburg pilots implementing work-to-rule. Vessel movements restricted to daylight hours only. Expect 6-12hr delays on arrival/departure.',
-    portId: 'hamburg', region: 'Europe - North', startDate: '2026-03-12', endDate: '2026-03-15', severity: 'Moderate',
-  },
-  {
-    id: 'ev-9', type: 'weather', title: 'Typhoon Season Early Start — Pacific', description: 'Abnormally early tropical activity near Busan/Shanghai',
-    detail: 'JMA tracking tropical depression 200km SE of Okinawa. May intensify. Busan and Shanghai could see swell/wind impacts by Mar 18.',
-    portId: null, region: 'Asia - East', startDate: '2026-03-16', endDate: '2026-03-20', severity: 'Moderate',
-  },
-  {
-    id: 'ev-10', type: 'customs_delay', title: 'Singapore — PSA System Upgrade', description: 'Terminal OS migration causing processing delays',
-    detail: 'PSA is migrating to NGTP system. Gate-in/gate-out processing times increased by 30-45 mins. Pre-advise containers where possible.',
-    portId: 'singapore', region: 'Asia - Southeast', startDate: '2026-03-08', endDate: '2026-03-14', severity: 'Low',
-  },
-];
+// ── Calendar Events ─────────────────────────────────────────────────────────
+// Events are now fetched live from the backend (/api/calendar/) via
+// useCalendarEvents() in src/hooks/useCalendarEvents.ts.
+// This file retains only the static helpers and type definitions.
 
-// ── Risk Zones ────────────────────────────────────
+// ── Placeholder so imports don't break during migration ─────────────────────
+// (nothing to export here — the hook owns the data)
+
+// ── Risk Zones (kept static — not managed by the calendar API) ─────────────
+
 export const riskZones: RiskZone[] = [
   { id: 'rz-1', name: 'Red Sea / Gulf of Aden', type: 'war_risk', region: 'Middle East', severity: 'Critical', description: 'Active Houthi attacks on commercial vessels', active: true },
   { id: 'rz-2', name: 'Gulf of Guinea', type: 'piracy', region: 'West Africa', severity: 'High', description: 'Piracy and armed robbery incidents', active: true },
@@ -221,6 +176,8 @@ export const EVENT_TYPE_CONFIG: Record<CalendarEventType, { label: string; color
   strike:        { label: 'Strike / Protest', color: 'hsl(0, 72%, 51%)',   bgClass: 'bg-red-50',     borderClass: 'border-red-300',    icon: '✊' },
   war_risk:      { label: 'War Risk Zone',    color: 'hsl(0, 0%, 20%)',    bgClass: 'bg-gray-100',   borderClass: 'border-gray-500',   icon: '⚠️' },
   customs_delay: { label: 'Customs Delay',    color: 'hsl(200, 70%, 50%)', bgClass: 'bg-sky-50',     borderClass: 'border-sky-300',    icon: '📋' },
+  risk:          { label: 'War / Security',   color: 'hsl(0, 0%, 18%)',    bgClass: 'bg-gray-100',   borderClass: 'border-gray-500',   icon: '⚠️' },
+  disruption:    { label: 'Port Disruption',  color: 'hsl(25, 90%, 45%)',  bgClass: 'bg-orange-50',  borderClass: 'border-orange-400', icon: '🚧' },
 };
 
 export const CONGESTION_CONFIG: Record<string, { color: string; label: string }> = {
@@ -230,8 +187,8 @@ export const CONGESTION_CONFIG: Record<string, { color: string; label: string }>
   Critical: { color: 'hsl(0, 72%, 51%)',   label: 'Critical' },
 };
 
-export function getPortRiskScore(portId: string): number {
-  const events = calendarEvents.filter(e => e.portId === portId || e.portId === null);
+export function getPortRiskScore(portId: string, allEvents: CalendarEvent[] = []): number {
+  const events = allEvents.filter(e => e.portId === portId || e.portId === null);
   let score = 0;
   events.forEach(e => {
     if (e.severity === 'Critical') score += 30;

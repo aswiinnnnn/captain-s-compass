@@ -8,10 +8,11 @@ import {
 } from '@/data/voyagePlannerData';
 import { fleetVessels } from '@/data/fleetData';
 import {
-  portEntries, calendarEvents, getPortRiskScore, getPortDailyCost,
+  portEntries, getPortRiskScore, getPortDailyCost,
   EVENT_TYPE_CONFIG, CONGESTION_CONFIG,
   type CalendarEvent,
 } from '@/data/portIntelligenceData';
+import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import NavTab from '@/components/NavTab';
 import {
   Anchor, Bell, Settings, Search, ChevronDown, ChevronUp, ArrowUpDown,
@@ -868,11 +869,12 @@ const VoyagePlanner = () => {
 const PortIntelligencePanel = ({ fromPortId, toPortId, departureUTC, arrivalUTC, navigate }: {
   fromPortId: string; toPortId: string; departureUTC?: string; arrivalUTC?: string; navigate: (path: string) => void;
 }) => {
+  const { events } = useCalendarEvents();
   const fromPI = portEntries.find(p => p.id === fromPortId);
   const toPI = portEntries.find(p => p.id === toPortId);
 
   const relevantEvents = useMemo(() => {
-    return calendarEvents.filter(ev => {
+    return events.filter(ev => {
       const matchPort = ev.portId === fromPortId || ev.portId === toPortId || ev.portId === null;
       if (!matchPort) return false;
       if (departureUTC && arrivalUTC) {
@@ -884,7 +886,7 @@ const PortIntelligencePanel = ({ fromPortId, toPortId, departureUTC, arrivalUTC,
       }
       return true;
     });
-  }, [fromPortId, toPortId, departureUTC, arrivalUTC]);
+  }, [events, fromPortId, toPortId, departureUTC, arrivalUTC]);
 
   if (!fromPI && !toPI && relevantEvents.length === 0) return null;
 
@@ -901,7 +903,7 @@ const PortIntelligencePanel = ({ fromPortId, toPortId, departureUTC, arrivalUTC,
         <div className="space-y-1.5">
           {[fromPI, toPI].filter(Boolean).map(port => {
             const p = port!;
-            const risk = getPortRiskScore(p.id);
+            const risk = getPortRiskScore(p.id, events);
             const cong = CONGESTION_CONFIG[p.congestionLevel];
             return (
               <div key={p.id} className="rounded-lg bg-muted/50 p-2">
@@ -954,6 +956,7 @@ const PortIntelligencePanel = ({ fromPortId, toPortId, departureUTC, arrivalUTC,
 const ConfirmIntelligenceRefs = ({ fromPortId, toPortId, navigate }: {
   fromPortId: string; toPortId: string; navigate: (path: string) => void;
 }) => {
+  const { events } = useCalendarEvents();
   const fromPI = portEntries.find(p => p.id === fromPortId);
   const toPI = portEntries.find(p => p.id === toPortId);
 
@@ -964,7 +967,7 @@ const ConfirmIntelligenceRefs = ({ fromPortId, toPortId, navigate }: {
     return total;
   }, [fromPI, toPI]);
 
-  const relevantEvents = calendarEvents.filter(ev =>
+  const relevantEvents = events.filter(ev =>
     ev.portId === fromPortId || ev.portId === toPortId || ev.portId === null
   ).filter(ev => ev.severity === 'High' || ev.severity === 'Critical');
 
